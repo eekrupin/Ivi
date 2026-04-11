@@ -21,9 +21,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.ekrupin.ivi.R
+import ru.ekrupin.ivi.core.ui.DatePickerField
 import ru.ekrupin.ivi.core.ui.InfoCard
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
-import ru.ekrupin.ivi.core.util.parseDisplayDate
 import ru.ekrupin.ivi.core.util.parseWeightInputToGrams
 import ru.ekrupin.ivi.core.util.toDisplayDate
 import ru.ekrupin.ivi.core.util.toWeightLabel
@@ -74,10 +74,9 @@ private fun AddWeightDialog(
     onDismiss: () -> Unit,
     onSave: (LocalDate, Int, String) -> Unit,
 ) {
-    var date by remember { mutableStateOf(LocalDate.now().toDisplayDate()) }
+    var date by remember { mutableStateOf(LocalDate.now()) }
     var weight by remember { mutableStateOf("") }
     var comment by remember { mutableStateOf("") }
-    var dateError by remember { mutableStateOf(false) }
     var weightError by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -85,20 +84,11 @@ private fun AddWeightDialog(
         title = { Text(stringResource(R.string.weight_add)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+                DatePickerField(
+                    label = stringResource(R.string.weight_date_label),
                     value = date,
-                    onValueChange = {
-                        date = it
-                        dateError = false
-                    },
-                    label = { Text(stringResource(R.string.weight_date_label)) },
-                    supportingText = {
-                        Text(
-                            if (dateError) stringResource(R.string.validation_date_invalid)
-                            else stringResource(R.string.common_format_date),
-                        )
-                    },
-                    isError = dateError,
+                    onValueChange = { date = it },
+                    supportingText = stringResource(R.string.common_pick_date),
                 )
                 OutlinedTextField(
                     value = weight,
@@ -121,12 +111,10 @@ private fun AddWeightDialog(
         },
         confirmButton = {
             Button(onClick = {
-                val parsedDate = parseDisplayDate(date)
                 val parsedWeight = parseWeightInputToGrams(weight)
-                dateError = parsedDate == null
                 weightError = parsedWeight == null
-                if (parsedDate != null && parsedWeight != null) {
-                    onSave(parsedDate, parsedWeight, comment.trim())
+                if (parsedWeight != null) {
+                    onSave(date, parsedWeight, comment.trim())
                 }
             }) {
                 Text(stringResource(R.string.common_save))

@@ -19,6 +19,7 @@ import ru.ekrupin.ivi.data.local.entity.PetEntity
 import ru.ekrupin.ivi.data.local.entity.PetEventEntity
 import ru.ekrupin.ivi.data.local.entity.ReminderSettingsEntity
 import ru.ekrupin.ivi.data.local.entity.WeightEntryEntity
+import ru.ekrupin.ivi.data.reminder.ReminderScheduler
 import ru.ekrupin.ivi.domain.model.EventCategory
 import ru.ekrupin.ivi.domain.model.PetEventStatus
 
@@ -29,6 +30,7 @@ class DatabaseSeeder @Inject constructor(
     private val eventTypeDao: EventTypeDao,
     private val petEventDao: PetEventDao,
     private val reminderSettingsDao: ReminderSettingsDao,
+    private val reminderScheduler: ReminderScheduler,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -174,6 +176,8 @@ class DatabaseSeeder @Inject constructor(
                     updatedAt = now,
                 ),
             )
+
+            reminderScheduler.refreshAll()
         }
     }
 }

@@ -27,10 +27,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.ekrupin.ivi.R
+import ru.ekrupin.ivi.core.ui.DatePickerField
 import ru.ekrupin.ivi.core.ui.InfoCard
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
-import ru.ekrupin.ivi.core.util.parseDisplayDate
 import ru.ekrupin.ivi.core.util.toDisplayDate
+import java.time.LocalDate
 
 @Composable
 fun HomeScreen(
@@ -41,9 +42,8 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showEditDialog by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
-    var birthDate by remember { mutableStateOf("") }
+    var birthDate by remember { mutableStateOf<LocalDate?>(null) }
     var photoUri by remember { mutableStateOf("") }
-    var dateError by remember { mutableStateOf(false) }
 
     ScreenScaffold(title = stringResource(R.string.nav_home)) {
         Card(modifier = Modifier.fillMaxWidth()) {
@@ -70,9 +70,8 @@ fun HomeScreen(
                 TextButton(
                     onClick = {
                         name = uiState.petName
-                        birthDate = uiState.birthDate?.toDisplayDate().orEmpty()
+                        birthDate = uiState.birthDate
                         photoUri = uiState.photoUri.orEmpty()
-                        dateError = false
                         showEditDialog = true
                     },
                 ) {
@@ -116,21 +115,13 @@ fun HomeScreen(
                         label = { Text(stringResource(R.string.pet_name_label)) },
                         singleLine = true,
                     )
-                    OutlinedTextField(
+                    DatePickerField(
+                        label = stringResource(R.string.pet_birth_date_label),
                         value = birthDate,
-                        onValueChange = {
-                            birthDate = it
-                            dateError = false
-                        },
-                        label = { Text(stringResource(R.string.pet_birth_date_label)) },
-                        supportingText = {
-                            Text(
-                                if (dateError) stringResource(R.string.validation_date_invalid)
-                                else stringResource(R.string.common_format_date),
-                            )
-                        },
-                        isError = dateError,
-                        singleLine = true,
+                        onValueChange = { birthDate = it },
+                        supportingText = stringResource(R.string.common_pick_date),
+                        allowClear = true,
+                        onClear = { birthDate = null },
                     )
                     OutlinedTextField(
                         value = photoUri,
@@ -143,16 +134,8 @@ fun HomeScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val parsedBirthDate = when {
-                            birthDate.isBlank() -> null
-                            else -> parseDisplayDate(birthDate)
-                        }
-                        if (birthDate.isNotBlank() && parsedBirthDate == null) {
-                            dateError = true
-                        } else {
-                            viewModel.savePet(name = name.trim(), birthDate = parsedBirthDate, photoUri = photoUri.trim())
-                            showEditDialog = false
-                        }
+                        viewModel.savePet(name = name.trim(), birthDate = birthDate, photoUri = photoUri.trim())
+                        showEditDialog = false
                     },
                 ) {
                     Text(stringResource(R.string.common_save))

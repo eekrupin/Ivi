@@ -18,6 +18,8 @@
     <string name="common_disabled">Выключено</string>
     <string name="common_format_date">Формат: дд.мм.гггг</string>
     <string name="common_no_data">Пока нет данных</string>
+    <string name="common_pick_date">Выбрать дату</string>
+    <string name="common_clear_date">Очистить дату</string>
 
     <string name="category_tick_protection">От клещей</string>
     <string name="category_deworming">От глистов</string>
@@ -58,6 +60,7 @@
     <string name="event_date_label">Дата события</string>
     <string name="event_due_date_label">Дата контроля</string>
     <string name="event_due_date_hint">Если оставить пустой, дата подставится из типа события</string>
+    <string name="event_due_date_clear">Очистить дату контроля</string>
     <string name="event_comment_label">Комментарий</string>
     <string name="event_notifications_label">Напоминания для этого события</string>
     <string name="event_no_types">Сначала добавьте хотя бы один тип события</string>
@@ -86,6 +89,11 @@
     <string name="settings_second_enabled">Второе напоминание</string>
     <string name="settings_second_days">За сколько дней</string>
     <string name="settings_description">Эти настройки применяются ко всем событиям с датой контроля.</string>
+
+    <string name="reminder_channel_name">Напоминания Иви</string>
+    <string name="reminder_channel_description">Напоминания о событиях и датах контроля для Иви</string>
+    <string name="reminder_notification_title">Иви: напоминание</string>
+    <string name="reminder_notification_text">%1$s — дата контроля %2$s</string>
 
     <string name="validation_name_required">Введите название</string>
     <string name="validation_type_required">Выберите тип события</string>

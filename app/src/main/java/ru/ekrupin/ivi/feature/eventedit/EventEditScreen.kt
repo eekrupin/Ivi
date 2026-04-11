@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,9 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.ekrupin.ivi.R
+import ru.ekrupin.ivi.core.ui.DatePickerField
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
-import ru.ekrupin.ivi.core.util.parseDisplayDate
 import ru.ekrupin.ivi.core.util.toDisplayDate
+import java.time.LocalDate
 
 @Composable
 fun EventEditScreen(
@@ -31,24 +32,24 @@ fun EventEditScreen(
     viewModel: EventEditViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var selectedTypeId by rememberSaveable { mutableStateOf<Long?>(null) }
-    var eventDate by rememberSaveable { mutableStateOf("") }
-    var dueDate by rememberSaveable { mutableStateOf("") }
+    var selectedTypeId by remember { mutableStateOf<Long?>(null) }
+    var eventDate by remember { mutableStateOf(LocalDate.now()) }
+    var dueDate by remember { mutableStateOf<LocalDate?>(null) }
     var comment by rememberSaveable { mutableStateOf("") }
     var notificationsEnabled by rememberSaveable { mutableStateOf(true) }
     var typeError by rememberSaveable { mutableStateOf(false) }
-    var eventDateError by rememberSaveable { mutableStateOf(false) }
-    var dueDateError by rememberSaveable { mutableStateOf(false) }
     var initialized by rememberSaveable(uiState.existingEvent?.id) { mutableStateOf(false) }
+    var useAutomaticDueDate by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.existingEvent, uiState.eventTypes) {
         if (!initialized && uiState.eventTypes.isNotEmpty()) {
             val existing = uiState.existingEvent
             selectedTypeId = existing?.eventTypeId ?: uiState.eventTypes.first().id
-            eventDate = existing?.eventDate?.toDisplayDate() ?: java.time.LocalDate.now().toDisplayDate()
-            dueDate = existing?.dueDate?.toDisplayDate().orEmpty()
+            eventDate = existing?.eventDate ?: LocalDate.now()
+            dueDate = existing?.dueDate
             comment = existing?.comment.orEmpty()
             notificationsEnabled = existing?.notificationsEnabled ?: true
+            useAutomaticDueDate = existing?.dueDate == null
             initialized = true
         }
     }
@@ -90,37 +91,34 @@ fun EventEditScreen(
             Text(stringResource(R.string.validation_type_required))
         }
 
-        OutlinedTextField(
+        DatePickerField(
+            label = stringResource(R.string.event_date_label),
             value = eventDate,
-            onValueChange = {
-                eventDate = it
-                eventDateError = false
-            },
-            label = { Text(stringResource(R.string.event_date_label)) },
-            supportingText = {
-                Text(
-                    if (eventDateError) stringResource(R.string.validation_date_invalid)
-                    else stringResource(R.string.common_format_date),
-                )
-            },
-            isError = eventDateError,
+            onValueChange = { eventDate = it },
+            supportingText = stringResource(R.string.common_pick_date),
         )
-        OutlinedTextField(
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Checkbox(checked = useAutomaticDueDate, onCheckedChange = {
+                useAutomaticDueDate = it
+                if (it) dueDate = null
+            })
+            Text(stringResource(R.string.event_due_date_hint))
+        }
+        DatePickerField(
+            label = stringResource(R.string.event_due_date_label),
             value = dueDate,
             onValueChange = {
                 dueDate = it
-                dueDateError = false
+                useAutomaticDueDate = false
             },
-            label = { Text(stringResource(R.string.event_due_date_label)) },
-            supportingText = {
-                Text(
-                    if (dueDateError) stringResource(R.string.validation_date_invalid)
-                    else stringResource(R.string.event_due_date_hint),
-                )
+            supportingText = stringResource(R.string.common_pick_date),
+            allowClear = true,
+            onClear = {
+                dueDate = null
+                useAutomaticDueDate = true
             },
-            isError = dueDateError,
         )
-        OutlinedTextField(
+        androidx.compose.material3.OutlinedTextField(
             value = comment,
             onValueChange = { comment = it },
             label = { Text(stringResource(R.string.event_comment_label)) },
@@ -130,19 +128,12 @@ fun EventEditScreen(
             Switch(checked = notificationsEnabled, onCheckedChange = { notificationsEnabled = it })
         }
         Button(onClick = {
-            val parsedEventDate = parseDisplayDate(eventDate)
-            val parsedDueDate = when {
-                dueDate.isBlank() -> null
-                else -> parseDisplayDate(dueDate)
-            }
             typeError = selectedTypeId == null
-            eventDateError = parsedEventDate == null
-            dueDateError = dueDate.isNotBlank() && parsedDueDate == null
-            if (!typeError && parsedEventDate != null && !dueDateError) {
+            if (!typeError) {
                 viewModel.saveEvent(
                     selectedTypeId = selectedTypeId!!,
-                    eventDate = parsedEventDate,
-                    dueDate = parsedDueDate,
+                    eventDate = eventDate,
+                    dueDate = if (useAutomaticDueDate) null else dueDate,
                     comment = comment.trim(),
                     notificationsEnabled = notificationsEnabled,
                     defaultDurationDays = selectedType?.defaultDurationDays,
