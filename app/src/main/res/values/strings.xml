@@ -36,12 +36,16 @@
     <string name="home_edit_pet">Данные Иви</string>
     <string name="home_birth_date_missing">Дату рождения можно добавить</string>
     <string name="home_no_active_events">Нет активных событий</string>
+    <string name="home_next_highlight">Ближайшее важное</string>
+    <string name="home_next_highlight_title">Что сейчас важнее всего</string>
 
     <string name="pet_edit_title">Данные питомца</string>
     <string name="pet_name_label">Имя</string>
     <string name="pet_birth_date_label">Дата рождения</string>
-    <string name="pet_photo_uri_label">Фото внутри приложения</string>
-    <string name="pet_photo_uri_hint">Пока можно сохранить локальный URI</string>
+    <string name="pet_photo_pick">Выбрать фото</string>
+    <string name="pet_photo_replace">Заменить фото</string>
+    <string name="pet_photo_placeholder">Добавьте фото Иви, чтобы экран стал по-настоящему домашним</string>
+    <string name="pet_photo_content_description">Фото питомца %1$s</string>
 
     <string name="events_title">События</string>
     <string name="events_filter_active">Актуальные</string>

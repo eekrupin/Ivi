@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.ekrupin.ivi.core.util.toDisplayDate
+import ru.ekrupin.ivi.core.util.toAgeLabel
 import ru.ekrupin.ivi.core.util.toWeightLabel
 import ru.ekrupin.ivi.domain.model.PetEventStatus
 import ru.ekrupin.ivi.domain.repository.EventTypeRepository
@@ -19,14 +20,25 @@ import ru.ekrupin.ivi.domain.repository.ReminderSettingsRepository
 import ru.ekrupin.ivi.domain.repository.WeightRepository
 import java.time.LocalDate
 
+data class HomeHighlight(
+    val title: String = "Пока ничего срочного",
+    val subtitle: String = "Можно спокойно заглянуть в историю событий",
+)
+
+data class HomeEventItem(
+    val title: String,
+    val subtitle: String,
+)
+
 data class HomeUiState(
     val petName: String = "",
     val birthDate: LocalDate? = null,
     val birthDateLabel: String = "",
+    val ageLabel: String = "Возраст можно добавить",
     val photoUri: String? = null,
     val currentWeightLabel: String = "Пока нет записей",
-    val nextReminderLabel: String = "Пока нет ближайших напоминаний",
-    val activeEvents: List<String> = emptyList(),
+    val nextHighlight: HomeHighlight = HomeHighlight(),
+    val activeEvents: List<HomeEventItem> = emptyList(),
 )
 
 @HiltViewModel
@@ -51,11 +63,11 @@ class HomeViewModel @Inject constructor(
             .sortedBy { it.dueDate ?: it.eventDate }
             .map { event ->
                 val title = typeNames[event.eventTypeId] ?: "Событие"
-                val suffix = event.dueDate?.let { "до ${it.toDisplayDate()}" } ?: event.eventDate.toDisplayDate()
-                "$title • $suffix"
+                val suffix = event.dueDate?.let { "Контроль до ${it.toDisplayDate()}" } ?: "Проведено ${event.eventDate.toDisplayDate()}"
+                HomeEventItem(title = title, subtitle = suffix)
             }
 
-        val nextReminder = settings?.let { reminder ->
+        val nextHighlight = settings?.let { reminder ->
             val candidates = events
                 .filter { it.status == PetEventStatus.ACTIVE && it.notificationsEnabled && it.dueDate != null }
                 .flatMap { event ->
@@ -69,17 +81,26 @@ class HomeViewModel @Inject constructor(
 
             candidates.firstOrNull()?.let { (event, reminderDate) ->
                 val title = typeNames[event.eventTypeId] ?: "Событие"
-                "$title • ${reminderDate.toDisplayDate()}"
+                HomeHighlight(
+                    title = title,
+                    subtitle = "Напомним ${reminderDate.toDisplayDate()}",
+                )
             }
-        } ?: "Пока нет ближайших напоминаний"
+        } ?: activeEvents.firstOrNull()?.let {
+            HomeHighlight(
+                title = it.title,
+                subtitle = it.subtitle,
+            )
+        } ?: HomeHighlight()
 
         HomeUiState(
             petName = pet?.name ?: "Иви",
             birthDate = pet?.birthDate,
             birthDateLabel = pet?.birthDate?.toDisplayDate()?.let { "Дата рождения: $it" } ?: "Дату рождения можно добавить",
+            ageLabel = pet?.birthDate?.toAgeLabel() ?: "Возраст можно добавить",
             photoUri = pet?.photoUri,
             currentWeightLabel = currentWeight,
-            nextReminderLabel = nextReminder ?: "Пока нет ближайших напоминаний",
+            nextHighlight = nextHighlight,
             activeEvents = activeEvents.take(3),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
@@ -87,6 +108,16 @@ class HomeViewModel @Inject constructor(
     fun savePet(name: String, birthDate: LocalDate?, photoUri: String?) {
         viewModelScope.launch {
             petRepository.savePet(name = name, birthDate = birthDate, photoUri = photoUri)
+        }
+    }
+
+    fun savePetPhoto(photoUri: String?) {
+        viewModelScope.launch {
+            petRepository.savePet(
+                name = uiState.value.petName.ifBlank { "Иви" },
+                birthDate = uiState.value.birthDate,
+                photoUri = photoUri,
+            )
         }
     }
 }

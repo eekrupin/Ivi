@@ -28,6 +28,8 @@ fun IviNavGraph(
             HomeScreen(
                 onAddEvent = { navController.navigate(IviDestination.EventEdit.createRoute()) },
                 onOpenWeight = { navController.navigate(IviDestination.Weight.route) },
+                onOpenEvents = { navController.navigate(IviDestination.Events.route) },
+                onOpenSettings = { navController.navigate(IviDestination.Settings.route) },
             )
         }
         composable(IviDestination.Events.route) {
