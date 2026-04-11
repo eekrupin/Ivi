@@ -43,4 +43,10 @@ class EventTypesViewModel @Inject constructor(
             )
         }
     }
+
+    fun deleteType(id: Long) {
+        viewModelScope.launch {
+            eventTypeRepository.deleteType(id)
+        }
+    }
 }

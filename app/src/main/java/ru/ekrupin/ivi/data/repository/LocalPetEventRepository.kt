@@ -36,4 +36,9 @@ class LocalPetEventRepository @Inject constructor(
         petEventDao.updateStatus(id, status, LocalDateTime.now())
         reminderScheduler.refreshAll()
     }
+
+    override suspend fun deleteEvent(id: Long) {
+        petEventDao.deleteById(id)
+        reminderScheduler.refreshAll()
+    }
 }

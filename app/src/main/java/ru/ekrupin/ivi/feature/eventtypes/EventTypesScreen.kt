@@ -9,6 +9,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -83,6 +84,12 @@ fun EventTypesScreen(viewModel: EventTypesViewModel = hiltViewModel()) {
                 viewModel.saveType(id, name, category, durationDays, isActive)
                 showDialog = false
             },
+            onDelete = editingType?.let {
+                {
+                    viewModel.deleteType(it.id)
+                    showDialog = false
+                }
+            },
         )
     }
 }
@@ -92,6 +99,7 @@ private fun EventTypeDialog(
     initialType: EventType?,
     onDismiss: () -> Unit,
     onSave: (Long, String, EventCategory, Int?, Boolean) -> Unit,
+    onDelete: (() -> Unit)?,
 ) {
     var name by remember(initialType) { mutableStateOf(initialType?.name.orEmpty()) }
     var duration by remember(initialType) { mutableStateOf(initialType?.defaultDurationDays?.toString().orEmpty()) }
@@ -150,15 +158,22 @@ private fun EventTypeDialog(
             }
         },
         confirmButton = {
-            Button(onClick = {
-                val parsedDuration = duration.takeIf { it.isNotBlank() }?.toIntOrNull()
-                when {
-                    name.isBlank() -> showNameError = true
-                    duration.isNotBlank() && parsedDuration == null -> showDurationError = true
-                    else -> onSave(initialType?.id ?: 0L, name.trim(), selectedCategory, parsedDuration, active)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (onDelete != null) {
+                    OutlinedButton(onClick = onDelete) {
+                        Text(stringResource(R.string.common_delete))
+                    }
                 }
-            }) {
-                Text(stringResource(R.string.common_save))
+                Button(onClick = {
+                    val parsedDuration = duration.takeIf { it.isNotBlank() }?.toIntOrNull()
+                    when {
+                        name.isBlank() -> showNameError = true
+                        duration.isNotBlank() && parsedDuration == null -> showDurationError = true
+                        else -> onSave(initialType?.id ?: 0L, name.trim(), selectedCategory, parsedDuration, active)
+                    }
+                }) {
+                    Text(stringResource(R.string.common_save))
+                }
             }
         },
         dismissButton = {

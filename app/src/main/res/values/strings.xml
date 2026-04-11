@@ -14,6 +14,7 @@
     <string name="common_edit">Изменить</string>
     <string name="common_close">Закрыть</string>
     <string name="common_create">Создать</string>
+    <string name="common_delete">Удалить</string>
     <string name="common_enabled">Включено</string>
     <string name="common_disabled">Выключено</string>
     <string name="common_format_date">Формат: дд.мм.гггг</string>

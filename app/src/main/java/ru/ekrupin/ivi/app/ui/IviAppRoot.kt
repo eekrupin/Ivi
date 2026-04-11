@@ -47,10 +47,9 @@ fun IviAppRoot() {
                         onClick = {
                             navController.navigate(destination.route.route) {
                                 popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
+                                    inclusive = false
                                 }
                                 launchSingleTop = true
-                                restoreState = true
                             }
                         },
                         icon = { Icon(destination.icon, contentDescription = null) },

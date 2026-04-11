@@ -12,4 +12,6 @@ interface PetEventRepository {
     suspend fun saveEvent(event: PetEvent): Long
 
     suspend fun updateStatus(id: Long, status: PetEventStatus)
+
+    suspend fun deleteEvent(id: Long)
 }

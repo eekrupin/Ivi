@@ -39,6 +39,12 @@ interface PetEventDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(events: List<PetEventEntity>)
 
+    @Query("DELETE FROM pet_events WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("UPDATE pet_events SET status = :status, updatedAt = :updatedAt WHERE id = :id")
     suspend fun updateStatus(id: Long, status: ru.ekrupin.ivi.domain.model.PetEventStatus, updatedAt: java.time.LocalDateTime)
+
+    @Query("SELECT COUNT(*) FROM pet_events WHERE eventTypeId = :eventTypeId")
+    suspend fun countByEventTypeId(eventTypeId: Long): Int
 }

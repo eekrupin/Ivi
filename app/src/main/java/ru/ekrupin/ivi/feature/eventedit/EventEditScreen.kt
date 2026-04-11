@@ -10,6 +10,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,6 +66,7 @@ fun EventEditScreen(
     }
 
     val selectedType = uiState.eventTypes.firstOrNull { it.id == selectedTypeId }
+    val isEditing = uiState.existingEvent != null
 
     ScreenScaffold(
         title = stringResource(
@@ -97,25 +99,27 @@ fun EventEditScreen(
             Text(stringResource(R.string.validation_type_required))
         }
 
-        Text(stringResource(R.string.event_status_label))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = androidx.compose.ui.Modifier.horizontalScroll(rememberScrollState()),
-        ) {
-            listOf(PetEventStatus.ACTIVE, PetEventStatus.COMPLETED, PetEventStatus.ARCHIVED).forEach { item ->
-                FilterChip(
-                    selected = status == item,
-                    onClick = { status = item },
-                    label = {
-                        Text(
-                            when (item) {
-                                PetEventStatus.ACTIVE -> stringResource(R.string.events_filter_active)
-                                PetEventStatus.COMPLETED -> stringResource(R.string.events_filter_completed)
-                                PetEventStatus.ARCHIVED -> stringResource(R.string.events_filter_archived)
-                            },
-                        )
-                    },
-                )
+        if (isEditing) {
+            Text(stringResource(R.string.event_status_label))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = androidx.compose.ui.Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                listOf(PetEventStatus.ACTIVE, PetEventStatus.COMPLETED, PetEventStatus.ARCHIVED).forEach { item ->
+                    FilterChip(
+                        selected = status == item,
+                        onClick = { status = item },
+                        label = {
+                            Text(
+                                when (item) {
+                                    PetEventStatus.ACTIVE -> stringResource(R.string.events_filter_active)
+                                    PetEventStatus.COMPLETED -> stringResource(R.string.events_filter_completed)
+                                    PetEventStatus.ARCHIVED -> stringResource(R.string.events_filter_archived)
+                                },
+                            )
+                        },
+                    )
+                }
             }
         }
 
@@ -169,21 +173,28 @@ fun EventEditScreen(
                 )
             }
         }
-        Button(onClick = {
-            typeError = selectedTypeId == null
-            if (!typeError) {
-                viewModel.saveEvent(
-                    selectedTypeId = selectedTypeId!!,
-                    eventDate = eventDate,
-                    dueDate = if (useAutomaticDueDate) null else dueDate,
-                    comment = comment.trim(),
-                    notificationsEnabled = notificationsEnabled,
-                    status = status,
-                    defaultDurationDays = selectedType?.defaultDurationDays,
-                )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(onClick = {
+                typeError = selectedTypeId == null
+                if (!typeError) {
+                    viewModel.saveEvent(
+                        selectedTypeId = selectedTypeId!!,
+                        eventDate = eventDate,
+                        dueDate = if (useAutomaticDueDate) null else dueDate,
+                        comment = comment.trim(),
+                        notificationsEnabled = notificationsEnabled,
+                        status = status,
+                        defaultDurationDays = selectedType?.defaultDurationDays,
+                    )
+                }
+            }) {
+                Text(stringResource(R.string.common_save))
             }
-        }) {
-            Text(stringResource(R.string.common_save))
+            if (isEditing) {
+                OutlinedButton(onClick = viewModel::deleteEvent) {
+                    Text(stringResource(R.string.common_delete))
+                }
+            }
         }
     }
 }

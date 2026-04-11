@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 import ru.ekrupin.ivi.data.local.entity.EventTypeEntity
 
@@ -24,6 +25,12 @@ interface EventTypeDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(eventType: EventTypeEntity): Long
 
+    @Update
+    suspend fun update(eventType: EventTypeEntity)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(eventTypes: List<EventTypeEntity>)
+
+    @Query("DELETE FROM event_types WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }

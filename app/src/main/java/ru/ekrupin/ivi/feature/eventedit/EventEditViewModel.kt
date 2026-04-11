@@ -56,6 +56,7 @@ class EventEditViewModel @Inject constructor(
         viewModelScope.launch {
             val current = uiState.value.existingEvent
             val finalDueDate = dueDate ?: defaultDurationDays?.let { eventDate.plusDays(it.toLong()) }
+            val finalStatus = if (current == null) PetEventStatus.ACTIVE else status
             petEventRepository.saveEvent(
                 PetEvent(
                     id = current?.id ?: 0L,
@@ -65,11 +66,19 @@ class EventEditViewModel @Inject constructor(
                     dueDate = finalDueDate,
                     comment = comment.takeIf { it.isNotBlank() },
                     notificationsEnabled = notificationsEnabled,
-                    status = status,
+                    status = finalStatus,
                     createdAt = current?.createdAt ?: LocalDateTime.now(),
                     updatedAt = LocalDateTime.now(),
                 ),
             )
+            saveTick.update { it + 1 }
+        }
+    }
+
+    fun deleteEvent() {
+        val currentEventId = uiState.value.existingEvent?.id ?: return
+        viewModelScope.launch {
+            petEventRepository.deleteEvent(currentEventId)
             saveTick.update { it + 1 }
         }
     }

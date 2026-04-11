@@ -9,4 +9,6 @@ interface EventTypeRepository {
     fun observeActiveTypes(): Flow<List<EventType>>
 
     suspend fun saveType(eventType: EventType)
+
+    suspend fun deleteType(id: Long)
 }
