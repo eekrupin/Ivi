@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Иви</string>
+
+    <string name="nav_home">Главная</string>
+    <string name="nav_events">События</string>
+    <string name="nav_weight">Вес</string>
+    <string name="nav_event_types">Типы</string>
+    <string name="nav_settings">Напоминания</string>
+
+    <string name="common_add">Добавить</string>
+    <string name="common_save">Сохранить</string>
+    <string name="common_cancel">Отмена</string>
+    <string name="common_edit">Изменить</string>
+    <string name="common_close">Закрыть</string>
+    <string name="common_create">Создать</string>
+    <string name="common_enabled">Включено</string>
+    <string name="common_disabled">Выключено</string>
+    <string name="common_format_date">Формат: дд.мм.гггг</string>
+    <string name="common_no_data">Пока нет данных</string>
+
+    <string name="category_tick_protection">От клещей</string>
+    <string name="category_deworming">От глистов</string>
+    <string name="category_vaccination">Прививка</string>
+    <string name="category_checkup">Осмотр</string>
+    <string name="category_other">Другое</string>
+
+    <string name="home_current_weight">Текущий вес</string>
+    <string name="home_next_reminder">Ближайшее напоминание</string>
+    <string name="home_active_events">Актуальные события</string>
+    <string name="home_add_event">Добавить событие</string>
+    <string name="home_add_weight">Добавить вес</string>
+    <string name="home_edit_pet">Данные Иви</string>
+    <string name="home_birth_date_missing">Дату рождения можно добавить</string>
+    <string name="home_no_active_events">Нет активных событий</string>
+
+    <string name="pet_edit_title">Данные питомца</string>
+    <string name="pet_name_label">Имя</string>
+    <string name="pet_birth_date_label">Дата рождения</string>
+    <string name="pet_photo_uri_label">Фото внутри приложения</string>
+    <string name="pet_photo_uri_hint">Пока можно сохранить локальный URI</string>
+
+    <string name="events_title">События</string>
+    <string name="events_filter_active">Актуальные</string>
+    <string name="events_filter_completed">Завершённые</string>
+    <string name="events_filter_archived">Архив</string>
+    <string name="events_empty">Для этого режима пока нет событий</string>
+    <string name="events_edit">Открыть</string>
+    <string name="events_mark_completed">Завершить</string>
+    <string name="events_mark_active">Вернуть в актуальные</string>
+    <string name="events_mark_archived">В архив</string>
+    <string name="events_notifications_on">Напоминания включены</string>
+    <string name="events_notifications_off">Напоминания выключены</string>
+
+    <string name="event_edit_title_new">Новое событие</string>
+    <string name="event_edit_title_existing">Редактирование события</string>
+    <string name="event_type_label">Тип события</string>
+    <string name="event_date_label">Дата события</string>
+    <string name="event_due_date_label">Дата контроля</string>
+    <string name="event_due_date_hint">Если оставить пустой, дата подставится из типа события</string>
+    <string name="event_comment_label">Комментарий</string>
+    <string name="event_notifications_label">Напоминания для этого события</string>
+    <string name="event_no_types">Сначала добавьте хотя бы один тип события</string>
+
+    <string name="event_types_title">Типы событий</string>
+    <string name="event_type_add">Добавить тип</string>
+    <string name="event_type_edit">Редактировать тип</string>
+    <string name="event_type_name_label">Название типа</string>
+    <string name="event_type_category_label">Категория</string>
+    <string name="event_type_duration_label">Длительность по умолчанию, дней</string>
+    <string name="event_type_active_label">Тип активен</string>
+    <string name="event_types_empty">Справочник пока пустой</string>
+    <string name="event_type_no_duration">Без автоматической даты контроля</string>
+
+    <string name="weight_title">Вес</string>
+    <string name="weight_add">Добавить запись веса</string>
+    <string name="weight_history_title">История измерений</string>
+    <string name="weight_empty">Записей веса пока нет</string>
+    <string name="weight_value_label">Вес, кг</string>
+    <string name="weight_date_label">Дата взвешивания</string>
+    <string name="weight_comment_label">Комментарий</string>
+
+    <string name="settings_title">Настройки напоминаний</string>
+    <string name="settings_first_enabled">Первое напоминание</string>
+    <string name="settings_first_days">За сколько дней</string>
+    <string name="settings_second_enabled">Второе напоминание</string>
+    <string name="settings_second_days">За сколько дней</string>
+    <string name="settings_description">Эти настройки применяются ко всем событиям с датой контроля.</string>
+
+    <string name="validation_name_required">Введите название</string>
+    <string name="validation_type_required">Выберите тип события</string>
+    <string name="validation_date_invalid">Проверьте дату в формате дд.мм.гггг</string>
+    <string name="validation_weight_invalid">Введите вес в килограммах, например 8,4</string>
+    <string name="validation_number_invalid">Введите целое число</string>
+</resources>
