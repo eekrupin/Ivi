@@ -66,10 +66,10 @@ fun EventsScreen(
                         Text(text = item.title, style = MaterialTheme.typography.titleMedium)
                         Text(text = item.subtitle, style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            text = if (item.notificationsEnabled) {
-                                stringResource(R.string.events_notifications_on)
-                            } else {
-                                stringResource(R.string.events_notifications_off)
+                            text = when (item.reminderState) {
+                                ReminderStateUi.ENABLED -> stringResource(R.string.events_notifications_on)
+                                ReminderStateUi.DISABLED -> stringResource(R.string.events_notifications_off)
+                                ReminderStateUi.INACTIVE_STATUS -> stringResource(R.string.events_notifications_inactive_status)
                             },
                             style = MaterialTheme.typography.bodySmall,
                         )

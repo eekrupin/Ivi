@@ -47,7 +47,7 @@ class AndroidReminderScheduler @Inject constructor(
         petEventDao.getReminderEntries().forEach { entry ->
             val dueDate = entry.dueDate ?: return@forEach
             if (!entry.notificationsEnabled) return@forEach
-            if (entry.status == PetEventStatus.ARCHIVED) return@forEach
+            if (entry.status != PetEventStatus.ACTIVE) return@forEach
 
             scheduleIfNeeded(
                 key = reminderKey(entry.eventId, 1),

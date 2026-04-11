@@ -2,10 +2,13 @@ package ru.ekrupin.ivi.feature.eventedit
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -25,6 +28,7 @@ import ru.ekrupin.ivi.core.ui.DatePickerField
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
 import ru.ekrupin.ivi.core.util.toDisplayDate
 import java.time.LocalDate
+import ru.ekrupin.ivi.domain.model.PetEventStatus
 
 @Composable
 fun EventEditScreen(
@@ -37,6 +41,7 @@ fun EventEditScreen(
     var dueDate by remember { mutableStateOf<LocalDate?>(null) }
     var comment by rememberSaveable { mutableStateOf("") }
     var notificationsEnabled by rememberSaveable { mutableStateOf(true) }
+    var status by rememberSaveable { mutableStateOf(PetEventStatus.ACTIVE) }
     var typeError by rememberSaveable { mutableStateOf(false) }
     var initialized by rememberSaveable(uiState.existingEvent?.id) { mutableStateOf(false) }
     var useAutomaticDueDate by remember { mutableStateOf(false) }
@@ -49,6 +54,7 @@ fun EventEditScreen(
             dueDate = existing?.dueDate
             comment = existing?.comment.orEmpty()
             notificationsEnabled = existing?.notificationsEnabled ?: true
+            status = existing?.status ?: PetEventStatus.ACTIVE
             useAutomaticDueDate = existing?.dueDate == null
             initialized = true
         }
@@ -91,6 +97,28 @@ fun EventEditScreen(
             Text(stringResource(R.string.validation_type_required))
         }
 
+        Text(stringResource(R.string.event_status_label))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = androidx.compose.ui.Modifier.horizontalScroll(rememberScrollState()),
+        ) {
+            listOf(PetEventStatus.ACTIVE, PetEventStatus.COMPLETED, PetEventStatus.ARCHIVED).forEach { item ->
+                FilterChip(
+                    selected = status == item,
+                    onClick = { status = item },
+                    label = {
+                        Text(
+                            when (item) {
+                                PetEventStatus.ACTIVE -> stringResource(R.string.events_filter_active)
+                                PetEventStatus.COMPLETED -> stringResource(R.string.events_filter_completed)
+                                PetEventStatus.ARCHIVED -> stringResource(R.string.events_filter_archived)
+                            },
+                        )
+                    },
+                )
+            }
+        }
+
         DatePickerField(
             label = stringResource(R.string.event_date_label),
             value = eventDate,
@@ -123,9 +151,23 @@ fun EventEditScreen(
             onValueChange = { comment = it },
             label = { Text(stringResource(R.string.event_comment_label)) },
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(stringResource(R.string.event_notifications_label))
-            Switch(checked = notificationsEnabled, onCheckedChange = { notificationsEnabled = it })
+        Card {
+            Column(
+                modifier = androidx.compose.ui.Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.event_notifications_label))
+                    Switch(checked = notificationsEnabled, onCheckedChange = { notificationsEnabled = it })
+                }
+                Text(
+                    text = if (status == PetEventStatus.ACTIVE) {
+                        stringResource(R.string.event_notifications_active_hint)
+                    } else {
+                        stringResource(R.string.event_notifications_inactive_hint)
+                    },
+                )
+            }
         }
         Button(onClick = {
             typeError = selectedTypeId == null
@@ -136,6 +178,7 @@ fun EventEditScreen(
                     dueDate = if (useAutomaticDueDate) null else dueDate,
                     comment = comment.trim(),
                     notificationsEnabled = notificationsEnabled,
+                    status = status,
                     defaultDurationDays = selectedType?.defaultDurationDays,
                 )
             }

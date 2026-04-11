@@ -50,6 +50,7 @@ class EventEditViewModel @Inject constructor(
         dueDate: LocalDate?,
         comment: String,
         notificationsEnabled: Boolean,
+        status: PetEventStatus,
         defaultDurationDays: Int?,
     ) {
         viewModelScope.launch {
@@ -64,7 +65,7 @@ class EventEditViewModel @Inject constructor(
                     dueDate = finalDueDate,
                     comment = comment.takeIf { it.isNotBlank() },
                     notificationsEnabled = notificationsEnabled,
-                    status = current?.status ?: PetEventStatus.ACTIVE,
+                    status = status,
                     createdAt = current?.createdAt ?: LocalDateTime.now(),
                     updatedAt = LocalDateTime.now(),
                 ),

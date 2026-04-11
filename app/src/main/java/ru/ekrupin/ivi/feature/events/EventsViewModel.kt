@@ -21,8 +21,14 @@ data class EventListItemUi(
     val title: String,
     val subtitle: String,
     val status: PetEventStatus,
-    val notificationsEnabled: Boolean,
+    val reminderState: ReminderStateUi,
 )
+
+enum class ReminderStateUi {
+    ENABLED,
+    DISABLED,
+    INACTIVE_STATUS,
+}
 
 data class EventsUiState(
     val filter: PetEventStatus = PetEventStatus.ACTIVE,
@@ -60,7 +66,11 @@ class EventsViewModel @Inject constructor(
                     title = title,
                     subtitle = subtitle,
                     status = event.status,
-                    notificationsEnabled = event.notificationsEnabled,
+                    reminderState = when {
+                        event.status != PetEventStatus.ACTIVE -> ReminderStateUi.INACTIVE_STATUS
+                        event.notificationsEnabled -> ReminderStateUi.ENABLED
+                        else -> ReminderStateUi.DISABLED
+                    },
                 )
             }
         EventsUiState(filter = currentFilter, items = items)
