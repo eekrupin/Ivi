@@ -7,14 +7,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,7 +57,7 @@ fun EventsScreen(
         }
 
         if (uiState.items.isEmpty()) {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -72,12 +75,42 @@ fun EventsScreen(
         }
 
         uiState.items.forEach { item ->
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = when (item.status) {
+                        PetEventStatus.ACTIVE -> MaterialTheme.colorScheme.surface
+                        PetEventStatus.COMPLETED -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.28f)
+                        PetEventStatus.ARCHIVED -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                    },
+                ),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Column {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = when (item.status) {
+                                    PetEventStatus.ACTIVE -> MaterialTheme.colorScheme.primaryContainer
+                                    PetEventStatus.COMPLETED -> MaterialTheme.colorScheme.tertiaryContainer
+                                    PetEventStatus.ARCHIVED -> MaterialTheme.colorScheme.surfaceVariant
+                                },
+                            ) {
+                                Text(
+                                    text = when (item.status) {
+                                        PetEventStatus.ACTIVE -> stringResource(R.string.events_filter_active)
+                                        PetEventStatus.COMPLETED -> stringResource(R.string.events_filter_completed)
+                                        PetEventStatus.ARCHIVED -> stringResource(R.string.events_filter_archived)
+                                    },
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                )
+                            }
+                        }
                         Text(text = item.title, style = MaterialTheme.typography.titleMedium)
                         Text(text = item.subtitle, style = MaterialTheme.typography.bodyMedium)
                         Text(
@@ -87,6 +120,7 @@ fun EventsScreen(
                                 ReminderStateUi.INACTIVE_STATUS -> stringResource(R.string.events_notifications_inactive_status)
                             },
                             style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

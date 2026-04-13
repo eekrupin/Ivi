@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,11 +53,12 @@ fun WeightScreen(viewModel: WeightViewModel = hiltViewModel()) {
                 ) {
                     Text(
                         text = stringResource(R.string.weight_empty_title),
-                        style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
                         text = stringResource(R.string.weight_empty),
-                        style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -67,7 +69,15 @@ fun WeightScreen(viewModel: WeightViewModel = hiltViewModel()) {
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(text = "${record.date.toDisplayDate()} • ${record.weightGrams.toWeightLabel()}")
+                    Text(
+                        text = record.weightGrams.toWeightLabel(),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = record.date.toDisplayDate(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     record.comment?.let { Text(text = it) }
                 }
             }
