@@ -99,7 +99,14 @@ Lint для debug:
 
 В проекте уже подготовлена настройка release signing через файл `android/keystore.properties` в Android Gradle root.
 
-Файл не хранится в git и должен быть создан локально.
+В git должен храниться только шаблон `android/keystore.properties.example`.
+
+Реальные файлы:
+
+- `android/keystore.properties`
+- сам release keystore (`.keystore` или `.jks`)
+
+не должны коммититься и остаются только локально.
 
 Минимальные поля:
 
@@ -111,6 +118,9 @@ keyPassword=your_key_password
 ```
 
 Если `keyPassword` не указан, будет использован `storePassword`.
+
+`storeFile` можно задавать абсолютным путем или путем относительно Android root `android/`.
+Например, локальный файл рядом с `keystore.properties` можно указать как `storeFile=ivi-release.keystore`.
 
 При запуске release-задач без настроенной подписи Gradle завершит сборку с ошибкой.
 

@@ -1,10 +1,20 @@
 .gradle/
 .kotlin/
 .idea/
+
+# Local Android SDK and signing files
 local.properties
 keystore.properties
+/android/local.properties
+/android/keystore.properties
+/android/*.keystore
+/android/*.jks
+
+# Build outputs
 **/build/
 captures/
 *.iml
+
+# Keystore artifacts
 *.keystore
 *.jks
