@@ -11,6 +11,7 @@ import ru.ekrupin.ivi.feature.eventedit.EventEditScreen
 import ru.ekrupin.ivi.feature.events.EventsScreen
 import ru.ekrupin.ivi.feature.eventtypes.EventTypesScreen
 import ru.ekrupin.ivi.feature.home.HomeScreen
+import ru.ekrupin.ivi.feature.petedit.PetEditScreen
 import ru.ekrupin.ivi.feature.settings.SettingsScreen
 import ru.ekrupin.ivi.feature.weight.WeightScreen
 
@@ -30,6 +31,7 @@ fun IviNavGraph(
                 onOpenWeight = { navController.navigate(IviDestination.Weight.route) },
                 onOpenEvents = { navController.navigate(IviDestination.Events.route) },
                 onOpenSettings = { navController.navigate(IviDestination.Settings.route) },
+                onEditPet = { navController.navigate(IviDestination.PetEdit.route) },
             )
         }
         composable(IviDestination.Events.route) {
@@ -46,6 +48,9 @@ fun IviNavGraph(
         }
         composable(IviDestination.Settings.route) {
             SettingsScreen()
+        }
+        composable(IviDestination.PetEdit.route) {
+            PetEditScreen(onSaved = { navController.popBackStack() })
         }
         composable(
             route = IviDestination.EventEdit.route,

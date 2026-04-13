@@ -3,6 +3,7 @@ package ru.ekrupin.ivi.feature.eventedit
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -79,82 +80,105 @@ fun EventEditScreen(
             return@ScreenScaffold
         }
 
-        Text(stringResource(R.string.event_type_label))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = androidx.compose.ui.Modifier.horizontalScroll(rememberScrollState()),
-        ) {
-            uiState.eventTypes.forEach { type ->
-                FilterChip(
-                    selected = selectedTypeId == type.id,
-                    onClick = {
-                        selectedTypeId = type.id
-                        typeError = false
+        Card {
+            Column(
+                modifier = androidx.compose.ui.Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text(stringResource(R.string.event_type_label))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = androidx.compose.ui.Modifier.horizontalScroll(rememberScrollState()),
+                ) {
+                    uiState.eventTypes.forEach { type ->
+                        FilterChip(
+                            selected = selectedTypeId == type.id,
+                            onClick = {
+                                selectedTypeId = type.id
+                                typeError = false
+                            },
+                            label = { Text(type.name) },
+                        )
+                    }
+                }
+                if (typeError) {
+                    Text(stringResource(R.string.validation_type_required))
+                }
+
+                DatePickerField(
+                    label = stringResource(R.string.event_date_label),
+                    value = eventDate,
+                    onValueChange = { eventDate = it },
+                    supportingText = stringResource(R.string.common_pick_date),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Checkbox(checked = useAutomaticDueDate, onCheckedChange = {
+                        useAutomaticDueDate = it
+                        if (it) dueDate = null
+                    })
+                    Text(stringResource(R.string.event_due_date_hint))
+                }
+                DatePickerField(
+                    label = stringResource(R.string.event_due_date_label),
+                    value = dueDate,
+                    onValueChange = {
+                        dueDate = it
+                        useAutomaticDueDate = false
                     },
-                    label = { Text(type.name) },
+                    supportingText = stringResource(R.string.common_pick_date),
+                    allowClear = true,
+                    onClear = {
+                        dueDate = null
+                        useAutomaticDueDate = true
+                    },
+                )
+                androidx.compose.material3.OutlinedTextField(
+                    value = comment,
+                    onValueChange = { comment = it },
+                    label = { Text(stringResource(R.string.event_comment_label)) },
+                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
                 )
             }
         }
-        if (typeError) {
-            Text(stringResource(R.string.validation_type_required))
-        }
 
         if (isEditing) {
-            Text(stringResource(R.string.event_status_label))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = androidx.compose.ui.Modifier.horizontalScroll(rememberScrollState()),
-            ) {
-                listOf(PetEventStatus.ACTIVE, PetEventStatus.COMPLETED, PetEventStatus.ARCHIVED).forEach { item ->
-                    FilterChip(
-                        selected = status == item,
-                        onClick = { status = item },
-                        label = {
-                            Text(
-                                when (item) {
-                                    PetEventStatus.ACTIVE -> stringResource(R.string.events_filter_active)
-                                    PetEventStatus.COMPLETED -> stringResource(R.string.events_filter_completed)
-                                    PetEventStatus.ARCHIVED -> stringResource(R.string.events_filter_archived)
+            Card {
+                Column(
+                    modifier = androidx.compose.ui.Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(stringResource(R.string.event_status_label))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = androidx.compose.ui.Modifier.horizontalScroll(rememberScrollState()),
+                    ) {
+                        listOf(PetEventStatus.ACTIVE, PetEventStatus.COMPLETED, PetEventStatus.ARCHIVED).forEach { item ->
+                            FilterChip(
+                                selected = status == item,
+                                onClick = { status = item },
+                                label = {
+                                    Text(
+                                        when (item) {
+                                            PetEventStatus.ACTIVE -> stringResource(R.string.events_filter_active)
+                                            PetEventStatus.COMPLETED -> stringResource(R.string.events_filter_completed)
+                                            PetEventStatus.ARCHIVED -> stringResource(R.string.events_filter_archived)
+                                        },
+                                    )
                                 },
                             )
+                        }
+                    }
+                    Text(
+                        text = if (status == PetEventStatus.ACTIVE) {
+                            stringResource(R.string.event_status_active_hint)
+                        } else {
+                            stringResource(R.string.event_status_inactive_hint)
                         },
                     )
                 }
             }
         }
 
-        DatePickerField(
-            label = stringResource(R.string.event_date_label),
-            value = eventDate,
-            onValueChange = { eventDate = it },
-            supportingText = stringResource(R.string.common_pick_date),
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Checkbox(checked = useAutomaticDueDate, onCheckedChange = {
-                useAutomaticDueDate = it
-                if (it) dueDate = null
-            })
-            Text(stringResource(R.string.event_due_date_hint))
-        }
-        DatePickerField(
-            label = stringResource(R.string.event_due_date_label),
-            value = dueDate,
-            onValueChange = {
-                dueDate = it
-                useAutomaticDueDate = false
-            },
-            supportingText = stringResource(R.string.common_pick_date),
-            allowClear = true,
-            onClear = {
-                dueDate = null
-                useAutomaticDueDate = true
-            },
-        )
-        androidx.compose.material3.OutlinedTextField(
-            value = comment,
-            onValueChange = { comment = it },
-            label = { Text(stringResource(R.string.event_comment_label)) },
-        )
         Card {
             Column(
                 modifier = androidx.compose.ui.Modifier.padding(16.dp),

@@ -36,22 +36,31 @@
     <string name="home_edit_pet">Данные Иви</string>
     <string name="home_birth_date_missing">Дату рождения можно добавить</string>
     <string name="home_no_active_events">Нет активных событий</string>
+    <string name="home_no_active_events_title">Сейчас все спокойно</string>
     <string name="home_next_highlight">Ближайшее важное</string>
     <string name="home_next_highlight_title">Что сейчас важнее всего</string>
 
     <string name="pet_edit_title">Данные питомца</string>
+    <string name="pet_edit_screen_title">Профиль Иви</string>
+    <string name="pet_edit_intro">Здесь можно спокойно обновить основные данные Иви и привести карточку питомца в порядок.</string>
     <string name="pet_name_label">Имя</string>
+    <string name="pet_name_hint">Имя будет видно на главном экране и в карточке питомца.</string>
     <string name="pet_birth_date_label">Дата рождения</string>
+    <string name="pet_birth_date_hint">Если дата неизвестна, поле можно оставить пустым.</string>
     <string name="pet_photo_pick">Выбрать фото</string>
     <string name="pet_photo_replace">Заменить фото</string>
+    <string name="pet_photo_delete">Удалить фото</string>
     <string name="pet_photo_placeholder">Добавьте фото Иви, чтобы экран стал по-настоящему домашним</string>
     <string name="pet_photo_content_description">Фото питомца %1$s</string>
+    <string name="pet_photo_empty_title">Фотографии пока нет</string>
+    <string name="pet_photo_empty_body">Выберите любимый снимок Иви, и карточка питомца сразу станет живее и теплее.</string>
 
     <string name="events_title">События</string>
     <string name="events_filter_active">Актуальные</string>
     <string name="events_filter_completed">Завершённые</string>
     <string name="events_filter_archived">Архив</string>
     <string name="events_empty">Для этого режима пока нет событий</string>
+    <string name="events_empty_title">Здесь пока пусто</string>
     <string name="events_edit">Открыть</string>
     <string name="events_mark_completed">Завершить</string>
     <string name="events_mark_active">Вернуть в актуальные</string>
@@ -71,6 +80,8 @@
     <string name="event_comment_label">Комментарий</string>
     <string name="event_notifications_label">Напоминания для этого события</string>
     <string name="event_no_types">Сначала добавьте хотя бы один тип события</string>
+    <string name="event_status_active_hint">Актуальное событие остается в рабочем списке и может участвовать в напоминаниях.</string>
+    <string name="event_status_inactive_hint">Завершенные и архивные события остаются в истории, но больше не участвуют в напоминаниях.</string>
     <string name="event_notifications_active_hint">Напоминания будут работать только для актуального события с датой контроля.</string>
     <string name="event_notifications_inactive_hint">Для завершённых и архивных событий напоминания не планируются.</string>
 
@@ -88,6 +99,7 @@
     <string name="weight_add">Добавить запись веса</string>
     <string name="weight_history_title">История измерений</string>
     <string name="weight_empty">Записей веса пока нет</string>
+    <string name="weight_empty_title">История веса еще не началась</string>
     <string name="weight_value_label">Вес, кг</string>
     <string name="weight_date_label">Дата взвешивания</string>
     <string name="weight_comment_label">Комментарий</string>

@@ -45,7 +45,21 @@ fun WeightScreen(viewModel: WeightViewModel = hiltViewModel()) {
             Text(stringResource(R.string.weight_add))
         }
         if (uiState.history.isEmpty()) {
-            Text(stringResource(R.string.weight_empty))
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.weight_empty_title),
+                        style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.weight_empty),
+                        style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
         }
         uiState.history.forEach { record ->
             Card(modifier = Modifier.fillMaxWidth()) {

@@ -6,6 +6,7 @@ sealed class IviDestination(val route: String) {
     data object Weight : IviDestination("weight")
     data object EventTypes : IviDestination("event_types")
     data object Settings : IviDestination("settings")
+    data object PetEdit : IviDestination("pet_edit")
 
     data object EventEdit : IviDestination("event_edit?eventId={eventId}") {
         fun createRoute(eventId: Long? = null): String =

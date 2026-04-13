@@ -1,9 +1,5 @@
 package ru.ekrupin.ivi.feature.home
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +10,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,30 +24,20 @@ import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Pets
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,10 +46,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import ru.ekrupin.ivi.R
-import ru.ekrupin.ivi.core.ui.DatePickerField
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
-import ru.ekrupin.ivi.core.util.copyPickedPetPhoto
-import java.time.LocalDate
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
@@ -73,22 +55,10 @@ fun HomeScreen(
     onOpenWeight: () -> Unit,
     onOpenEvents: () -> Unit,
     onOpenSettings: () -> Unit,
+    onEditPet: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    var showEditDialog by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf("") }
-    var birthDate by remember { mutableStateOf<LocalDate?>(null) }
-
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-    ) { uri: Uri? ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        runCatching {
-            context.copyPickedPetPhoto(uri, uiState.photoUri)
-        }.onSuccess(viewModel::savePetPhoto)
-    }
 
     ScreenScaffold(title = stringResource(R.string.nav_home)) {
         ElevatedCard(
@@ -112,11 +82,7 @@ fun HomeScreen(
                     PetPhoto(
                         photoUri = uiState.photoUri,
                         petName = uiState.petName,
-                        onPickPhoto = {
-                            photoPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                            )
-                        },
+                        onPickPhoto = onEditPet,
                     )
                     Column(
                         modifier = Modifier.weight(1f),
@@ -142,18 +108,17 @@ fun HomeScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        FilledTonalButton(onClick = {
-                            name = uiState.petName
-                            birthDate = uiState.birthDate
-                            showEditDialog = true
-                        }) {
+                        FilledTonalButton(onClick = onEditPet) {
                             Icon(Icons.Outlined.Edit, contentDescription = null)
                             Text(stringResource(R.string.common_edit))
                         }
                     }
                 }
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     HomeMetricCard(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Outlined.MonitorWeight,
@@ -231,10 +196,9 @@ fun HomeScreen(
                     )
                 }
                 if (uiState.activeEvents.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.home_no_active_events),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    HomeEmptyState(
+                        title = stringResource(R.string.home_no_active_events_title),
+                        body = stringResource(R.string.home_no_active_events),
                     )
                 } else {
                     uiState.activeEvents.forEach { item ->
@@ -270,50 +234,6 @@ fun HomeScreen(
                 onClick = onOpenSettings,
             )
         }
-    }
-
-    if (showEditDialog) {
-        AlertDialog(
-            onDismissRequest = { showEditDialog = false },
-            title = { Text(stringResource(R.string.pet_edit_title)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text(stringResource(R.string.pet_name_label)) },
-                        singleLine = true,
-                    )
-                    DatePickerField(
-                        label = stringResource(R.string.pet_birth_date_label),
-                        value = birthDate,
-                        onValueChange = { birthDate = it },
-                        supportingText = stringResource(R.string.common_pick_date),
-                        allowClear = true,
-                        onClear = { birthDate = null },
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.savePet(
-                            name = name.trim().ifBlank { uiState.petName.ifBlank { "Иви" } },
-                            birthDate = birthDate,
-                            photoUri = uiState.photoUri,
-                        )
-                        showEditDialog = false
-                    },
-                ) {
-                    Text(stringResource(R.string.common_save))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEditDialog = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            },
-        )
     }
 }
 
@@ -444,5 +364,16 @@ private fun HomeQuickAction(
     FilledTonalButton(onClick = onClick, modifier = Modifier.width(150.dp)) {
         Icon(icon, contentDescription = null)
         Text(text = label)
+    }
+}
+
+@Composable
+private fun HomeEmptyState(
+    title: String,
+    body: String,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(text = title, style = MaterialTheme.typography.titleMedium)
+        Text(text = body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

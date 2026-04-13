@@ -54,7 +54,21 @@ fun EventsScreen(
         }
 
         if (uiState.items.isEmpty()) {
-            Text(text = stringResource(R.string.events_empty), style = MaterialTheme.typography.bodyMedium)
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.events_empty_title),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.events_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
         }
 
         uiState.items.forEach { item ->

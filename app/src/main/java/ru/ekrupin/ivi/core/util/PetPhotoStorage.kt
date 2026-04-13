@@ -6,7 +6,7 @@ import java.io.File
 
 private const val PET_PHOTO_DIR = "pet-photos"
 
-fun Context.copyPickedPetPhoto(sourceUri: Uri, previousPhotoUri: String?): String {
+fun Context.copyPickedPetPhoto(sourceUri: Uri): String {
     val photoDirectory = File(filesDir, PET_PHOTO_DIR).apply { mkdirs() }
     val photoFile = File(photoDirectory, "pet_${System.currentTimeMillis()}.jpg")
 
@@ -15,8 +15,6 @@ fun Context.copyPickedPetPhoto(sourceUri: Uri, previousPhotoUri: String?): Strin
             inputStream.copyTo(outputStream)
         }
     } ?: error("Не удалось открыть выбранное фото")
-
-    deleteManagedPetPhoto(previousPhotoUri)
 
     return Uri.fromFile(photoFile).toString()
 }
