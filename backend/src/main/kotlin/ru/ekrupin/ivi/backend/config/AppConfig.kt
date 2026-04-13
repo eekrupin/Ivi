@@ -15,6 +15,8 @@ data class AppConfig(
                 jdbcUrl = config.property("ivi.database.jdbcUrl").getString(),
                 username = config.property("ivi.database.username").getString(),
                 password = config.property("ivi.database.password").getString(),
+                driverClassName = config.property("ivi.database.driverClassName").getString(),
+                maximumPoolSize = config.property("ivi.database.maximumPoolSize").getString().toInt(),
             ),
         )
     }
@@ -28,4 +30,6 @@ data class DatabaseAppConfig(
     val jdbcUrl: String,
     val username: String,
     val password: String,
+    val driverClassName: String,
+    val maximumPoolSize: Int,
 )

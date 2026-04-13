@@ -15,6 +15,7 @@
 - Текущая рабочая точка входа backend-сборки из корня репозитория: `./backend/gradlew -p ./backend`.
 - Android-специфичные файлы Gradle wrapper, `gradle/`, `gradle.properties`, `local.properties`, `keystore.properties`, `keystore.properties.example` и модуль `app/` перенесены внутрь `android/`.
 - Source of truth для API на текущем этапе: TypeSpec в `api/src/main.tsp`, OpenAPI генерируется как производный артефакт в `api/generated/openapi/openapi.yaml`.
+- В backend уже подключены PostgreSQL, Flyway и Exposed DSL как база server-side persistence-слоя.
 - Следующий архитектурный шаг: после backend skeleton отдельно добавить `infra/`, не смешивая это с уже зафиксированными Android-root, API-контрактом и серверным каркасом.
 
 ## Цель проекта
@@ -73,10 +74,14 @@
 - backend реально собирается и запускается через `./backend/gradlew -p ./backend`
 - `GET /health` уже отвечает рабочим JSON-ответом
 - route-группы `auth`, `me`, `pets/current`, `invites`, `sync`, `photo` заведены как server-side skeleton с stub-handler'ами под контракт
+- backend реально подключается к PostgreSQL через JDBC/HikariCP
+- Flyway автоматически применяет миграции при старте backend
+- первая схема БД уже заведена миграцией `V1__foundation.sql` с таблицами `users`, `pets`, `pet_memberships`, `invites`
+- persistence-слой для foundation-сущностей уже переведен с placeholder на реальный Exposed DSL repository-уровень без DAO
 
 Что в работе:
 - подготовка простого серверного контура для двух пользователей и одного питомца
-- подготовка PostgreSQL, миграций и первых server-side vertical slice поверх уже заведенного backend skeleton
+- реализация первых реальных handler-ов поверх уже подключенного persistence foundation
 - подготовка `infra/` следующим этапом, уже без переноса Android и без переопределения API-контракта вручную
 - локальная клиентская полировка больше не является единственным фокусом этапа
 
@@ -126,6 +131,7 @@
 - Ktor
 - PostgreSQL
 - Flyway или эквивалентный инструмент миграций SQL
+- Exposed DSL
 - Docker Compose для локальной серверной среды и dev-инфраструктуры
 
 ## Архитектурный подход
@@ -159,8 +165,9 @@
 `backend/`
 - отдельный Gradle root backend-приложения на Kotlin + Ktor
 - `src/main/kotlin/.../backend/` с `Application`, `config`, `routing`, `health`, `auth`, `me`, `pet`, `invite`, `sync`, `photo`, `db`, `common`
-- `src/main/resources/` с `application.conf` и `logback.xml`
+- `src/main/resources/` с `application.conf`, `logback.xml` и `db/migration/`
 - отдельный wrapper и Gradle Kotlin DSL
+- локальный `docker-compose.yml` для PostgreSQL-разработки
 
 `api/`
 - контракт между Android и backend
@@ -639,6 +646,7 @@ UX разрешений на уведомления:
 - При работе с release signing использовать Android root как базовую директорию для `keystore.properties` и связанных путей.
 - `api/` и `infra/` можно создавать рано, потому что они не ломают текущий клиент и помогают согласовать новый этап.
 - Backend сейчас обязан реализовывать контракт из `api/`, а не формировать собственный параллельный HTTP-контракт; ориентир для реализации — TypeSpec source и сгенерированный `api/generated/openapi/openapi.yaml`.
+- На текущем этапе persistence в backend строится на PostgreSQL + Flyway + Exposed DSL; Exposed DAO сознательно не используем.
 
 ## Что сознательно не усложняем
 - не делаем multi-module архитектуру по каждой фиче на старте
@@ -649,6 +657,7 @@ UX разрешений на уведомления:
 - не вводим роли сложнее `OWNER` и `MEMBER`
 - не добавляем multi-pet в первый серверный этап
 - не проектируем NAS как рабочее хранилище приложения
+- не используем Exposed DAO; достаточно DSL-стиля и явных repository
 
 ## Принятые допущения
 - Пока поддерживается только один питомец.
@@ -698,6 +707,8 @@ UX разрешений на уведомления:
 - Команды для backend:
   - `./backend/gradlew -p ./backend build`
   - `./backend/gradlew -p ./backend run`
+  - `docker compose -f ./backend/docker-compose.yml up -d`
+  - `docker compose -f ./backend/docker-compose.yml down -v`
 
 Порядок проверки после изменений:
 1. `./android/gradlew -p ./android :app:assembleDebug`
@@ -816,12 +827,18 @@ UX разрешений на уведомления:
 Причина:
 - это позволяет рано проверить запуск сервера и закрепить структуру проекта, не смешивая server bootstrap с реализацией auth, sync и PostgreSQL
 
+### D-014
+Статус: принято
+Решение:
+- server-side persistence foundation строится на PostgreSQL, Flyway и Exposed DSL; первой миграцией поднимаются только `users`, `pets`, `pet_memberships`, `invites`
+Причина:
+- это дает реальную БД-основу для auth, pet access и invite flow, не затягивая в текущий шаг всю sync-схему целиком
+
 ## План следующих шагов
-1. Подключить PostgreSQL и миграции в уже созданный `backend/` skeleton.
-2. Реализовать на backend базовую модель доступа: пользователь, питомец, membership, invite.
-3. Реализовать первые реальные endpoint-обработчики поверх контракта: `health`, затем auth/pet/invite-заготовки без полной sync-логики.
-4. Реализовать первый sync-вертикальный срез для структурированных данных без фото: `bootstrap`, `changes`, `push`.
-5. После этого адаптировать Android под `remoteId`/outbox/sync-метаданные и только затем подключать реальный обмен с сервером.
+1. Реализовать на backend первые реальные DB-backed handler-ы для auth foundation, pet access и invite flow поверх уже созданных repository.
+2. Добавить следующие syncable-таблицы и persistence foundation для `event_types`, `pet_events`, `weight_entries`.
+3. Реализовать первый sync-вертикальный срез для структурированных данных без фото: `bootstrap`, `changes`, `push`.
+4. После этого адаптировать Android под `remoteId`/outbox/sync-метаданные и только затем подключать реальный обмен с сервером.
 
 ## Практика работы в этом репозитории
 - Перед существенными решениями сначала смотри реальные файлы репозитория; сейчас тут мало кода, поэтому особенно важно не делать ложных выводов о якобы существующей структуре.

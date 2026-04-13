@@ -1,11 +1,13 @@
 package ru.ekrupin.ivi.backend.health
 
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import kotlinx.serialization.Serializable
 import ru.ekrupin.ivi.backend.config.AppConfig
+import ru.ekrupin.ivi.backend.db.DatabaseFactory
 
 @Serializable
 data class HealthResponse(
@@ -15,12 +17,16 @@ data class HealthResponse(
     val contractSource: String,
 )
 
-fun Route.registerHealthRoutes(appConfig: AppConfig) {
+fun Route.registerHealthRoutes(appConfig: AppConfig, databaseFactory: DatabaseFactory) {
     route("/health") {
         get {
+            val databaseHealth = databaseFactory.health()
+            val httpStatus = if (databaseHealth.connected) HttpStatusCode.OK else HttpStatusCode.ServiceUnavailable
+
             call.respond(
-                HealthResponse(
-                    status = "ok",
+                status = httpStatus,
+                message = HealthResponse(
+                    status = if (databaseHealth.connected) "ok" else "degraded",
                     service = "ivi-backend",
                     contractVersion = "0.1.0",
                     contractSource = appConfig.contract.openApiPath,

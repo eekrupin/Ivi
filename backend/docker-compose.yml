@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ivi-postgres
+    environment:
+      POSTGRES_DB: ivi
+      POSTGRES_USER: ivi
+      POSTGRES_PASSWORD: ivi
+    ports:
+      - "55432:5432"
+    volumes:
+      - ivi-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ivi -d ivi"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  ivi-postgres-data:

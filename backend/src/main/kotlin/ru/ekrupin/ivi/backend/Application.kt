@@ -1,12 +1,12 @@
 package ru.ekrupin.ivi.backend
 
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import ru.ekrupin.ivi.backend.common.error.ErrorResponse
 import ru.ekrupin.ivi.backend.common.error.configureErrorHandling
 import ru.ekrupin.ivi.backend.config.AppConfig
 import ru.ekrupin.ivi.backend.db.DatabaseConfig
@@ -38,9 +38,14 @@ fun Application.module() {
             jdbcUrl = appConfig.database.jdbcUrl,
             username = appConfig.database.username,
             password = appConfig.database.password,
+            driverClassName = appConfig.database.driverClassName,
+            maximumPoolSize = appConfig.database.maximumPoolSize,
         ),
-    )
-    databaseFactory.initialize()
+    ).initialize()
 
-    configureRouting(appConfig)
+    monitor.subscribe(ApplicationStopped) {
+        databaseFactory.close()
+    }
+
+    configureRouting(appConfig, databaseFactory)
 }
