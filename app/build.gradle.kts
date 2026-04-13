@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -5,6 +7,28 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
+}
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use(::load)
+    }
+}
+val releaseTasksRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.contains("release", ignoreCase = true)
+}
+val hasReleaseSigning = listOf("storeFile", "storePassword", "keyAlias").all {
+    !keystoreProperties.getProperty(it).isNullOrBlank()
+}
+val releaseKeyPassword = keystoreProperties.getProperty("keyPassword")
+    ?.takeIf { it.isNotBlank() }
+    ?: keystoreProperties.getProperty("storePassword")
+
+if (releaseTasksRequested && !hasReleaseSigning) {
+    throw GradleException(
+        "Release signing is not configured. Copy keystore.properties.example to keystore.properties and fill in storeFile, storePassword and keyAlias. keyPassword may be omitted to reuse storePassword.",
+    )
 }
 
 android {
@@ -22,8 +46,22 @@ android {
         vectorDrawables.useSupportLibrary = true
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
