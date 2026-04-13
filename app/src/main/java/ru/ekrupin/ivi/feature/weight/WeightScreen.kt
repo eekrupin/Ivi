@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -16,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -93,10 +95,13 @@ private fun AddWeightDialog(
                 OutlinedTextField(
                     value = weight,
                     onValueChange = {
-                        weight = it
-                        weightError = false
+                        if (it.matches(Regex("^\\d{0,2}([.,]\\d{0,1})?$"))) {
+                            weight = it
+                            weightError = false
+                        }
                     },
                     label = { Text(stringResource(R.string.weight_value_label)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     supportingText = {
                         if (weightError) Text(stringResource(R.string.validation_weight_invalid))
                     },
