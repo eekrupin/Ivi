@@ -6,12 +6,12 @@
 Если по проекту появляются новые важные решения, они сначала отражаются здесь.
 
 ## Текущее состояние репозитория
-- Фактически репозиторий сейчас представляет собой Android Gradle root в корне с одним модулем `:app`.
+- Репозиторий уже переведен в переходный monorepo-вид: Android-клиент живет в отдельной папке `android/` как собственный Gradle root.
 - Корневое имя проекта Android-сборки: `ivi`.
 - Корневой package и `applicationId`: `ru.ekrupin.ivi`.
-- Текущая рабочая точка входа Android-сборки: `./gradlew` из корня репозитория.
-- `./gradlew :app:assembleDebug` и `./gradlew test` успешно проходят в рабочей среде.
-- Следующий архитектурный шаг: превратить репозиторий в monorepo с отдельными верхнеуровневыми приложениями `android/` и `backend/`, отдельным контрактом в `api/` и инфраструктурным слоем в `infra/`.
+- Текущая рабочая точка входа Android-сборки из корня репозитория: `./android/gradlew -p ./android`.
+- Android-специфичные файлы Gradle wrapper, `gradle/`, `gradle.properties`, `local.properties`, `keystore.properties`, `keystore.properties.example` и модуль `app/` перенесены внутрь `android/`.
+- Следующий архитектурный шаг: отдельно добавить `api/`, затем `backend/` и `infra/`, не смешивая это с уже завершенным переносом Android.
 
 ## Цель проекта
 «Иви» — семейная система для учета событий по одному питомцу, собаке по имени Иви.
@@ -38,7 +38,7 @@
 
 Что уже определено:
 - платформа Android
-- один модуль `:app`
+- один модуль `:app` внутри отдельного Android root `android/`
 - package `ru.ekrupin.ivi`
 - приложение было локальным на первом этапе
 - один питомец в рамках MVP
@@ -65,9 +65,9 @@
 - главный экран переработан в более живой обзорный экран с выразительной карточкой питомца, фото, возрастом, текущим весом, ближайшим важным блоком и быстрыми переходами
 
 Что в работе:
-- архитектурное разделение репозитория на Android, backend, API-контракт и infra
 - проектирование remote-модели данных и правил синхронизации
 - подготовка простого серверного контура для двух пользователей и одного питомца
+- подготовка отдельных верхнеуровневых папок `api/`, `backend/` и `infra` следующим этапом, уже без переноса Android
 - локальная клиентская полировка больше не является единственным фокусом этапа
 
 Текущих технических блокеров среды не зафиксировано.
@@ -165,7 +165,7 @@
 - основной рабочий документ проекта
 
 Переходное правило:
-- пока фактический Android Gradle root находится в корне репозитория; перенос в `android/` делать отдельным аккуратным шагом, а не вперемешку с началом backend-разработки
+- перенос Android Gradle root в `android/` выполняется отдельным структурным шагом без функциональных изменений и должен оставаться изолированным от backend-работ
 
 Правило зависимостей:
 - `presentation` знает `domain`
@@ -179,16 +179,16 @@
 Фактически уже заведено:
 - `MainActivity` как entrypoint Activity
 - `IviApplication` с `@HiltAndroidApp`
-- `app/ui/IviAppRoot.kt` как корневой Compose `Scaffold`
-- `app/navigation/IviNavGraph.kt` как корневой `NavHost`
-- `data/local/db/IviDatabase.kt` и базовые DAO/entity-классы
-- `data/local/seed/DatabaseSeeder.kt` для стартового наполнения базы в `debug`
-- локальные repository-реализации в `data/repository/`
+- `android/app/src/main/java/ru/ekrupin/ivi/app/ui/IviAppRoot.kt` как корневой Compose `Scaffold`
+- `android/app/src/main/java/ru/ekrupin/ivi/app/navigation/IviNavGraph.kt` как корневой `NavHost`
+- `android/app/src/main/java/ru/ekrupin/ivi/data/local/db/IviDatabase.kt` и базовые DAO/entity-классы
+- `android/app/src/main/java/ru/ekrupin/ivi/data/local/seed/DatabaseSeeder.kt` для стартового наполнения базы в `debug`
+- локальные repository-реализации в `android/app/src/main/java/ru/ekrupin/ivi/data/repository/`
 - `ViewModel` для `home`, `events`, `eventedit`, `eventtypes`, `weight`, `settings`
 - рабочие экраны для `home`, `events`, `eventedit`, `eventtypes`, `weight`, `settings`
-- `core/ui/DatePickerField.kt` как общий нативный компонент выбора даты
-- `data/reminder/ReminderPublisherReceiver.kt` для показа уведомлений
-- `data/reminder/ReminderRescheduleReceiver.kt` для восстановления расписания после reboot и системных изменений времени
+- `android/app/src/main/java/ru/ekrupin/ivi/core/ui/DatePickerField.kt` как общий нативный компонент выбора даты
+- `android/app/src/main/java/ru/ekrupin/ivi/data/reminder/ReminderPublisherReceiver.kt` для показа уведомлений
+- `android/app/src/main/java/ru/ekrupin/ivi/data/reminder/ReminderRescheduleReceiver.kt` для восстановления расписания после reboot и системных изменений времени
 
 ## Предметная модель
 
@@ -617,10 +617,10 @@ UX разрешений на уведомления:
 - `SyncChangesResponse` должен содержать новый `cursor`, набор измененных сущностей, tombstone-удаления и признак, нужен ли повторный запрос следующей страницы изменений.
 
 ### Аккуратный переход от текущей структуры к новой
-- Не переносить Android в `android/` одновременно с созданием backend-каркаса и sync-модели.
-- Сначала зафиксировать архитектуру, контракт и план этапов.
-- Затем отдельным изменением перенести текущий Android Gradle root в `android/` вместе с `app/`, `gradle/`, wrapper-файлами и корректировкой путей вроде `rootProject.file("keystore.properties")`.
-- Только после успешной проверки Android-сборки в новом месте поднимать отдельный Gradle root для `backend/`.
+- Перенос Android в `android/` уже выполнен как отдельный структурный шаг без функциональных изменений.
+- Android Gradle root, wrapper-файлы, `gradle/`, `app/`, `local.properties` и release-signing файлы теперь живут внутри `android/`.
+- После такого переноса backend-каркас и API-контракт можно добавлять отдельно, не трогая клиентскую структуру.
+- При работе с release signing использовать Android root как базовую директорию для `keystore.properties` и связанных путей.
 - `api/` и `infra/` можно создавать рано, потому что они не ломают текущий клиент и помогают согласовать новый этап.
 
 ## Что сознательно не усложняем
@@ -660,26 +660,26 @@ UX разрешений на уведомления:
 - Фото питомца должно уйти в отдельный upload/download-контур и не должно опираться на текущие `file://` URI за пределами одного устройства.
 
 ## Открытые вопросы ближайшего этапа
-- В каком именно коммите делать физический перенос текущего Android Gradle root в `android/`: до backend-каркаса или сразу после фиксации `api/`.
 - Нужна ли синхронизация фото питомца в первой серверной поставке или ее разумнее вынести во второй backend-итерации после запуска структурированных данных.
 - Нужен ли уже в первой версии backend отдельный refresh-token flow, или на старте можно держать только короткоживущий access token + явный login.
 
 ## Команды
-- Текущая рабочая точка входа Android до переноса: `./gradlew`
-- Текущие Android-команды до переноса:
-  - `./gradlew tasks`
-  - `./gradlew :app:assembleDebug`
-  - `./gradlew test`
-  - `./gradlew :app:lintDebug`
-- После выделения Android в отдельную папку целевая точка входа станет `./android/gradlew`
+- Текущая рабочая точка входа Android из корня репозитория: `./android/gradlew -p ./android`
+- Альтернативно внутри папки `android/` можно использовать локальный wrapper `./gradlew`
+- Текущие Android-команды:
+  - `./android/gradlew -p ./android tasks`
+  - `./android/gradlew -p ./android :app:assembleDebug`
+  - `./android/gradlew -p ./android test`
+  - `./android/gradlew -p ./android :app:lintDebug`
+  - `./android/gradlew -p ./android :app:assembleRelease`
 
 Порядок проверки после изменений:
-1. Пока Android еще в корне: `./gradlew :app:assembleDebug`
-2. Пока Android еще в корне: `./gradlew test`
-3. Пока Android еще в корне: `./gradlew :app:lintDebug`
+1. `./android/gradlew -p ./android :app:assembleDebug`
+2. `./android/gradlew -p ./android test`
+3. `./android/gradlew -p ./android :app:lintDebug`
 
 Примечание:
-- `./gradlew :app:assembleDebug` успешно проходит в рабочей среде
+- Если запускать wrapper из корня репозитория, нужно явно указывать `-p ./android`, иначе Gradle будет считать корнем весь репозиторий и не найдет Android `settings.gradle.kts`
 - при сборке есть предупреждение AGP `8.5.2` о `compileSdk 35`, но оно не блокирует сборку
 
 ## GitHub push
@@ -769,15 +769,22 @@ UX разрешений на уведомления:
 Причина:
 - напоминания относятся к устройству и пользовательскому UX, а не к общей серверной истории питомца
 
+### D-011
+Статус: принято
+Решение:
+- текущий Android Gradle root вынесен в `android/` отдельным структурным рефакторингом без функциональных изменений
+Причина:
+- это закрепляет границы клиента до добавления `api/`, `backend/` и `infra` и снижает риск смешать перенос структуры с server-side разработкой
+
 ## План следующих шагов
-1. Отдельным небольшим изменением выделить текущий Android Gradle root в папку `android/` и перепроверить сборку без функциональных правок.
-2. Создать `api/` и зафиксировать там первую версию sync-контракта: OpenAPI, DTO и правила конфликтов.
-3. Создать минимальный `backend/`-каркас на Ktor с `health`, auth-болванкой, конфигурацией PostgreSQL и миграциями.
-4. Реализовать на backend базовую модель доступа: пользователь, питомец, membership, invite.
-5. Реализовать первый sync-вертикальный срез для структурированных данных без фото: `bootstrap`, `changes`, `push`.
-6. После этого адаптировать Android под `remoteId`/outbox/sync-метаданные и только затем подключать реальный обмен с сервером.
+1. Создать `api/` и зафиксировать там первую версию sync-контракта: OpenAPI, DTO и правила конфликтов.
+2. Создать минимальный `backend/`-каркас на Ktor с `health`, auth-болванкой, конфигурацией PostgreSQL и миграциями.
+3. Реализовать на backend базовую модель доступа: пользователь, питомец, membership, invite.
+4. Реализовать первый sync-вертикальный срез для структурированных данных без фото: `bootstrap`, `changes`, `push`.
+5. После этого адаптировать Android под `remoteId`/outbox/sync-метаданные и только затем подключать реальный обмен с сервером.
 
 ## Практика работы в этом репозитории
 - Перед существенными решениями сначала смотри реальные файлы репозитория; сейчас тут мало кода, поэтому особенно важно не делать ложных выводов о якобы существующей структуре.
 - При добавлении новых ключевых решений обновляй этот файл: он должен оставаться основной точкой входа для следующих сессий.
+- Перед каждой новой практической работой агент сначала фиксирует собственные уже завершенные изменения отдельным git-коммитом, если в рабочем дереве есть его незакоммиченные изменения.
 - Когда в репозитории появятся реальные Android- и Gradle-файлы, обнови этот документ и добавь сюда точные команды сборки, проверки, структуру модулей и любые найденные ограничения среды.
