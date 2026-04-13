@@ -9,6 +9,7 @@ keystore.properties
 /android/keystore.properties
 /android/*.keystore
 /android/*.jks
+/backend/.env
 
 # Build outputs
 **/build/

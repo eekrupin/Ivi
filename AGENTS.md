@@ -8,12 +8,14 @@
 ## Текущее состояние репозитория
 - Репозиторий уже переведен в переходный monorepo-вид: Android-клиент живет в отдельной папке `android/` как собственный Gradle root.
 - Папка `api/` уже создана и содержит первую версию контракта backend API и синхронизации.
+- Папка `backend/` уже создана как отдельный Gradle root backend-приложения на Kotlin + Ktor.
 - Корневое имя проекта Android-сборки: `ivi`.
 - Корневой package и `applicationId`: `ru.ekrupin.ivi`.
 - Текущая рабочая точка входа Android-сборки из корня репозитория: `./android/gradlew -p ./android`.
+- Текущая рабочая точка входа backend-сборки из корня репозитория: `./backend/gradlew -p ./backend`.
 - Android-специфичные файлы Gradle wrapper, `gradle/`, `gradle.properties`, `local.properties`, `keystore.properties`, `keystore.properties.example` и модуль `app/` перенесены внутрь `android/`.
 - Source of truth для API на текущем этапе: TypeSpec в `api/src/main.tsp`, OpenAPI генерируется как производный артефакт в `api/generated/openapi/openapi.yaml`.
-- Следующий архитектурный шаг: отдельно добавить `backend/`, затем `infra/`, не смешивая это с уже зафиксированными Android-root и API-контрактом.
+- Следующий архитектурный шаг: после backend skeleton отдельно добавить `infra/`, не смешивая это с уже зафиксированными Android-root, API-контрактом и серверным каркасом.
 
 ## Цель проекта
 «Иви» — семейная система для учета событий по одному питомцу, собаке по имени Иви.
@@ -67,10 +69,15 @@
 - главный экран переработан в более живой обзорный экран с выразительной карточкой питомца, фото, возрастом, текущим весом, ближайшим важным блоком и быстрыми переходами
 - создана папка `api/` с TypeSpec-контрактом первой версии для `auth`, `me`, `pets/current`, `invites`, `sync/bootstrap`, `sync/changes`, `sync/push`, `photo`, `health`
 - OpenAPI 3.1 генерируется из TypeSpec в `api/generated/openapi/openapi.yaml`
+- создана папка `backend/` с минимальным Ktor skeleton и отдельным Gradle root
+- backend реально собирается и запускается через `./backend/gradlew -p ./backend`
+- `GET /health` уже отвечает рабочим JSON-ответом
+- route-группы `auth`, `me`, `pets/current`, `invites`, `sync`, `photo` заведены как server-side skeleton с stub-handler'ами под контракт
 
 Что в работе:
 - подготовка простого серверного контура для двух пользователей и одного питомца
-- подготовка отдельных верхнеуровневых папок `backend/` и `infra` следующим этапом, уже без переноса Android и без переопределения API-контракта вручную
+- подготовка PostgreSQL, миграций и первых server-side vertical slice поверх уже заведенного backend skeleton
+- подготовка `infra/` следующим этапом, уже без переноса Android и без переопределения API-контракта вручную
 - локальная клиентская полировка больше не является единственным фокусом этапа
 
 Текущих технических блокеров среды не зафиксировано.
@@ -151,7 +158,9 @@
 
 `backend/`
 - отдельный Gradle root backend-приложения на Kotlin + Ktor
-- `app/` или `service/` с HTTP API, auth, sync, доступом к PostgreSQL и миграциями
+- `src/main/kotlin/.../backend/` с `Application`, `config`, `routing`, `health`, `auth`, `me`, `pet`, `invite`, `sync`, `photo`, `db`, `common`
+- `src/main/resources/` с `application.conf` и `logback.xml`
+- отдельный wrapper и Gradle Kotlin DSL
 
 `api/`
 - контракт между Android и backend
@@ -629,6 +638,7 @@ UX разрешений на уведомления:
 - После такого переноса backend-каркас и API-контракт можно добавлять отдельно, не трогая клиентскую структуру.
 - При работе с release signing использовать Android root как базовую директорию для `keystore.properties` и связанных путей.
 - `api/` и `infra/` можно создавать рано, потому что они не ломают текущий клиент и помогают согласовать новый этап.
+- Backend сейчас обязан реализовывать контракт из `api/`, а не формировать собственный параллельный HTTP-контракт; ориентир для реализации — TypeSpec source и сгенерированный `api/generated/openapi/openapi.yaml`.
 
 ## Что сознательно не усложняем
 - не делаем multi-module архитектуру по каждой фиче на старте
@@ -684,6 +694,10 @@ UX разрешений на уведомления:
   - `cd api && npm install`
   - `cd api && npm run generate:openapi`
   - `cd api && npm run build`
+- Текущая рабочая точка входа для backend: `./backend/gradlew -p ./backend`
+- Команды для backend:
+  - `./backend/gradlew -p ./backend build`
+  - `./backend/gradlew -p ./backend run`
 
 Порядок проверки после изменений:
 1. `./android/gradlew -p ./android :app:assembleDebug`
@@ -795,10 +809,17 @@ UX разрешений на уведомления:
 Причина:
 - это снижает риск расхождения между человекочитаемой спецификацией и производным машинным контрактом, по которому дальше будет строиться backend
 
+### D-013
+Статус: принято
+Решение:
+- backend заводится как отдельный Gradle/Ktor root с минимальным skeleton: рабочий `GET /health`, общая конфигурация, route-группы под контракт и placeholder-слой под БД без реализации полной бизнес-логики
+Причина:
+- это позволяет рано проверить запуск сервера и закрепить структуру проекта, не смешивая server bootstrap с реализацией auth, sync и PostgreSQL
+
 ## План следующих шагов
-1. Создать минимальный `backend/`-каркас на Ktor и подключить к нему уже зафиксированный контракт из `api/`.
-2. Реализовать на backend `health`, auth-болванку, конфигурацию PostgreSQL и миграции.
-3. Реализовать на backend базовую модель доступа: пользователь, питомец, membership, invite.
+1. Подключить PostgreSQL и миграции в уже созданный `backend/` skeleton.
+2. Реализовать на backend базовую модель доступа: пользователь, питомец, membership, invite.
+3. Реализовать первые реальные endpoint-обработчики поверх контракта: `health`, затем auth/pet/invite-заготовки без полной sync-логики.
 4. Реализовать первый sync-вертикальный срез для структурированных данных без фото: `bootstrap`, `changes`, `push`.
 5. После этого адаптировать Android под `remoteId`/outbox/sync-метаданные и только затем подключать реальный обмен с сервером.
 
