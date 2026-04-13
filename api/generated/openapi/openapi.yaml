@@ -1,0 +1,1437 @@
+openapi: 3.1.0
+info:
+  title: Ivi API
+  version: 0.1.0
+  summary: Backend API and sync contract for the Ivi family pet tracker.
+tags:
+  - name: Health
+  - name: Auth
+  - name: Me
+  - name: Pets
+  - name: Invites
+  - name: Sync
+  - name: Photo
+paths:
+  /health:
+    get:
+      operationId: HealthApi_getHealth
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+      tags:
+        - Health
+  /v1/auth/login:
+    post:
+      operationId: AuthApi_login
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+  /v1/auth/refresh:
+    post:
+      operationId: AuthApi_refresh
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+  /v1/auth/register:
+    post:
+      operationId: AuthApi_register
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+  /v1/invites/accept:
+    post:
+      operationId: InvitesApi_acceptInvite
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptInviteResponse'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+      tags:
+        - Invites
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInviteRequest'
+  /v1/me:
+    get:
+      operationId: MeApi_getMe
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+      tags:
+        - Me
+  /v1/pets:
+    post:
+      operationId: PetsApi_createPet
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatePetResponse'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+      tags:
+        - Pets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePetRequest'
+  /v1/pets/current:
+    get:
+      operationId: PetsApi_getCurrentPet
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentPetResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+      tags:
+        - Pets
+  /v1/pets/{petId}/invites:
+    post:
+      operationId: InvitesApi_createInvite
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateInviteResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+      tags:
+        - Invites
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInviteRequest'
+  /v1/pets/{petId}/photo:
+    put:
+      operationId: PetPhotoApi_uploadPhoto
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoUploadResponse'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+      tags:
+        - Photo
+      requestBody:
+        required: true
+        content:
+          '*/*':
+            schema:
+              contentMediaType: '*/*'
+    delete:
+      operationId: PetPhotoApi_deletePhoto
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoDeleteResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Access is forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+      tags:
+        - Photo
+  /v1/sync/bootstrap:
+    get:
+      operationId: SyncApi_bootstrap
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncBootstrapResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+      tags:
+        - Sync
+  /v1/sync/changes:
+    get:
+      operationId: SyncApi_getChanges
+      parameters:
+        - name: cursor
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/CursorToken'
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncChangesResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+      tags:
+        - Sync
+  /v1/sync/push:
+    post:
+      operationId: SyncApi_push
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncPushResponse'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+      tags:
+        - Sync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncPushRequest'
+components:
+  schemas:
+    AcceptInviteRequest:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          $ref: '#/components/schemas/InviteCode'
+    AcceptInviteResponse:
+      type: object
+      required:
+        - invite
+        - pet
+        - membership
+      properties:
+        invite:
+          $ref: '#/components/schemas/InviteDto'
+        pet:
+          $ref: '#/components/schemas/Pet'
+        membership:
+          $ref: '#/components/schemas/PetMembership'
+    AcceptedMutation:
+      type: object
+      required:
+        - entityType
+        - entityId
+        - version
+      properties:
+        clientMutationId:
+          $ref: '#/components/schemas/Uuid'
+        entityType:
+          $ref: '#/components/schemas/SyncEntityType'
+        entityId:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          format: int64
+    AuthRequestBase:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    AuthResponse:
+      type: object
+      required:
+        - tokens
+        - user
+      properties:
+        tokens:
+          $ref: '#/components/schemas/AuthTokenPairDto'
+        user:
+          $ref: '#/components/schemas/UserProfile'
+    AuthTokenPairDto:
+      type: object
+      required:
+        - tokenType
+        - accessToken
+        - refreshToken
+        - expiresInSeconds
+      properties:
+        tokenType:
+          type: string
+          enum:
+            - Bearer
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresInSeconds:
+          type: integer
+          format: int32
+    BadRequestError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+    ConflictDto:
+      type: object
+      required:
+        - entityType
+        - entityId
+        - serverVersion
+        - reason
+      properties:
+        entityType:
+          $ref: '#/components/schemas/SyncEntityType'
+        entityId:
+          $ref: '#/components/schemas/Uuid'
+        clientMutationId:
+          $ref: '#/components/schemas/Uuid'
+        baseVersion:
+          type: integer
+          format: int64
+        serverVersion:
+          type: integer
+          format: int64
+        reason:
+          $ref: '#/components/schemas/ConflictReason'
+        serverRecord:
+          anyOf:
+            - $ref: '#/components/schemas/SyncRecord'
+            - type: 'null'
+    ConflictError:
+      type: object
+      required:
+        - error
+        - conflicts
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConflictDto'
+    ConflictReason:
+      type: string
+      enum:
+        - VERSION_MISMATCH
+        - CURSOR_EXPIRED
+        - FORBIDDEN
+    CreateInviteRequest:
+      type: object
+      properties:
+        expiresInHours:
+          type: integer
+          format: int32
+    CreateInviteResponse:
+      type: object
+      required:
+        - invite
+      properties:
+        invite:
+          $ref: '#/components/schemas/InviteDto'
+    CreatePetRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        birthDate:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+    CreatePetResponse:
+      type: object
+      required:
+        - pet
+      properties:
+        pet:
+          $ref: '#/components/schemas/Pet'
+    CurrentPetResponse:
+      type: object
+      required:
+        - pet
+      properties:
+        pet:
+          $ref: '#/components/schemas/Pet'
+    CursorToken:
+      type: string
+      minLength: 1
+      maxLength: 256
+    DeleteEventTypeMutation:
+      type: object
+      required:
+        - entityType
+        - operation
+      properties:
+        entityType:
+          type: string
+          enum:
+            - EVENT_TYPE
+        operation:
+          type: string
+          enum:
+            - DELETE
+      allOf:
+        - $ref: '#/components/schemas/SyncMutationMeta'
+    DeletePetEventMutation:
+      type: object
+      required:
+        - entityType
+        - operation
+      properties:
+        entityType:
+          type: string
+          enum:
+            - PET_EVENT
+        operation:
+          type: string
+          enum:
+            - DELETE
+      allOf:
+        - $ref: '#/components/schemas/SyncMutationMeta'
+    DeletePetMutation:
+      type: object
+      required:
+        - entityType
+        - operation
+      properties:
+        entityType:
+          type: string
+          enum:
+            - PET
+        operation:
+          type: string
+          enum:
+            - DELETE
+      allOf:
+        - $ref: '#/components/schemas/SyncMutationMeta'
+    DeleteWeightEntryMutation:
+      type: object
+      required:
+        - entityType
+        - operation
+      properties:
+        entityType:
+          type: string
+          enum:
+            - WEIGHT_ENTRY
+        operation:
+          type: string
+          enum:
+            - DELETE
+      allOf:
+        - $ref: '#/components/schemas/SyncMutationMeta'
+    DeviceId:
+      type: string
+      minLength: 1
+      maxLength: 64
+    ErrorBody:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        message:
+          $ref: '#/components/schemas/ShortText'
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+    ErrorCode:
+      type: string
+      minLength: 1
+      maxLength: 256
+    ErrorDetail:
+      type: object
+      required:
+        - issue
+      properties:
+        field:
+          type: string
+        issue:
+          type: string
+    EventCategory:
+      type: string
+      enum:
+        - TICK
+        - DEWORMING
+        - VACCINATION
+        - CHECKUP
+        - OTHER
+    EventType:
+      type: object
+      required:
+        - petId
+        - name
+        - category
+        - isActive
+        - createdAt
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        category:
+          $ref: '#/components/schemas/EventCategory'
+        defaultDurationDays:
+          anyOf:
+            - type: integer
+              format: int32
+            - type: 'null'
+        isActive:
+          type: boolean
+        colorArgb:
+          anyOf:
+            - type: integer
+              format: int32
+            - type: 'null'
+        iconKey:
+          anyOf:
+            - type: string
+            - type: 'null'
+        createdAt:
+          type: string
+          format: date-time
+      allOf:
+        - $ref: '#/components/schemas/SyncRecordBase'
+    EventTypeWriteModel:
+      type: object
+      required:
+        - petId
+        - name
+        - category
+        - isActive
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        category:
+          $ref: '#/components/schemas/EventCategory'
+        defaultDurationDays:
+          anyOf:
+            - type: integer
+              format: int32
+            - type: 'null'
+        isActive:
+          type: boolean
+        colorArgb:
+          anyOf:
+            - type: integer
+              format: int32
+            - type: 'null'
+        iconKey:
+          anyOf:
+            - type: string
+            - type: 'null'
+    ForbiddenError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - contractVersion
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+        service:
+          type: string
+          enum:
+            - ivi-backend
+        contractVersion:
+          type: string
+          enum:
+            - 0.1.0
+    InviteCode:
+      type: string
+      minLength: 1
+      maxLength: 128
+    InviteDto:
+      type: object
+      required:
+        - id
+        - petId
+        - code
+        - status
+        - expiresAt
+        - createdAt
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          $ref: '#/components/schemas/InviteCode'
+        status:
+          $ref: '#/components/schemas/InviteStatus'
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    InviteStatus:
+      type: string
+      enum:
+        - PENDING
+        - ACCEPTED
+        - REVOKED
+        - EXPIRED
+    LoginRequest:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/AuthRequestBase'
+    MeResponse:
+      type: object
+      required:
+        - user
+        - memberships
+      properties:
+        user:
+          $ref: '#/components/schemas/UserProfile'
+        currentPetId:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/PetMembership'
+    MembershipRole:
+      type: string
+      enum:
+        - OWNER
+        - MEMBER
+    MembershipStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - REVOKED
+    NotFoundError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+    Pet:
+      type: object
+      required:
+        - name
+        - createdAt
+      properties:
+        name:
+          type: string
+        birthDate:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+        photoRevision:
+          anyOf:
+            - $ref: '#/components/schemas/PhotoRevision'
+            - type: 'null'
+        createdAt:
+          type: string
+          format: date-time
+      allOf:
+        - $ref: '#/components/schemas/SyncRecordBase'
+    PetEvent:
+      type: object
+      required:
+        - petId
+        - eventTypeId
+        - eventDate
+        - notificationsEnabled
+        - status
+        - createdAt
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        eventTypeId:
+          $ref: '#/components/schemas/Uuid'
+        eventDate:
+          type: string
+          format: date
+        dueDate:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+        comment:
+          anyOf:
+            - type: string
+            - type: 'null'
+        notificationsEnabled:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/PetEventStatus'
+        createdAt:
+          type: string
+          format: date-time
+      allOf:
+        - $ref: '#/components/schemas/SyncRecordBase'
+    PetEventStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - COMPLETED
+        - ARCHIVED
+    PetEventWriteModel:
+      type: object
+      required:
+        - petId
+        - eventTypeId
+        - eventDate
+        - notificationsEnabled
+        - status
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        eventTypeId:
+          $ref: '#/components/schemas/Uuid'
+        eventDate:
+          type: string
+          format: date
+        dueDate:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+        comment:
+          anyOf:
+            - type: string
+            - type: 'null'
+        notificationsEnabled:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/PetEventStatus'
+    PetMembership:
+      type: object
+      required:
+        - petId
+        - userId
+        - role
+        - status
+        - createdAt
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        userId:
+          $ref: '#/components/schemas/Uuid'
+        role:
+          $ref: '#/components/schemas/MembershipRole'
+        status:
+          $ref: '#/components/schemas/MembershipStatus'
+        createdAt:
+          type: string
+          format: date-time
+      allOf:
+        - $ref: '#/components/schemas/SyncRecordBase'
+    PetWriteModel:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        birthDate:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+        photoRevision:
+          anyOf:
+            - $ref: '#/components/schemas/PhotoRevision'
+            - type: 'null'
+    PhotoDeleteResponse:
+      type: object
+      required:
+        - petId
+        - deleted
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        photoRevision:
+          anyOf:
+            - $ref: '#/components/schemas/PhotoRevision'
+            - type: 'null'
+        deleted:
+          type: boolean
+    PhotoRevision:
+      type: string
+      minLength: 1
+      maxLength: 160
+    PhotoUploadResponse:
+      type: object
+      required:
+        - petId
+        - photoRevision
+        - status
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        photoRevision:
+          $ref: '#/components/schemas/PhotoRevision'
+        status:
+          $ref: '#/components/schemas/PhotoUploadStatus'
+    PhotoUploadStatus:
+      type: string
+      enum:
+        - STORED
+        - REPLACED
+    RefreshRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+    RegisterRequest:
+      type: object
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+      allOf:
+        - $ref: '#/components/schemas/AuthRequestBase'
+    ShortText:
+      type: string
+      minLength: 1
+      maxLength: 280
+    SyncBootstrapResponse:
+      type: object
+      required:
+        - cursor
+        - snapshot
+      properties:
+        cursor:
+          $ref: '#/components/schemas/CursorToken'
+        snapshot:
+          $ref: '#/components/schemas/SyncSnapshot'
+        notes:
+          type: array
+          items:
+            type: string
+    SyncChangesResponse:
+      type: object
+      required:
+        - cursor
+        - hasMore
+        - changes
+        - tombstones
+      properties:
+        cursor:
+          $ref: '#/components/schemas/CursorToken'
+        hasMore:
+          type: boolean
+        changes:
+          $ref: '#/components/schemas/SyncEntityChanges'
+        tombstones:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tombstone'
+    SyncEntityChanges:
+      type: object
+      required:
+        - users
+        - pets
+        - memberships
+        - eventTypes
+        - petEvents
+        - weightEntries
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserProfile'
+        pets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pet'
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/PetMembership'
+        eventTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventType'
+        petEvents:
+          type: array
+          items:
+            $ref: '#/components/schemas/PetEvent'
+        weightEntries:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeightEntry'
+    SyncEntityType:
+      type: string
+      enum:
+        - USER
+        - PET
+        - PET_MEMBERSHIP
+        - EVENT_TYPE
+        - PET_EVENT
+        - WEIGHT_ENTRY
+    SyncMutation:
+      anyOf:
+        - $ref: '#/components/schemas/UpsertPetMutation'
+        - $ref: '#/components/schemas/DeletePetMutation'
+        - $ref: '#/components/schemas/UpsertEventTypeMutation'
+        - $ref: '#/components/schemas/DeleteEventTypeMutation'
+        - $ref: '#/components/schemas/UpsertPetEventMutation'
+        - $ref: '#/components/schemas/DeletePetEventMutation'
+        - $ref: '#/components/schemas/UpsertWeightEntryMutation'
+        - $ref: '#/components/schemas/DeleteWeightEntryMutation'
+    SyncMutationMeta:
+      type: object
+      required:
+        - entityId
+      properties:
+        clientMutationId:
+          $ref: '#/components/schemas/Uuid'
+        entityId:
+          $ref: '#/components/schemas/Uuid'
+        baseVersion:
+          type: integer
+          format: int64
+    SyncPushRequest:
+      type: object
+      required:
+        - deviceId
+        - mutations
+      properties:
+        deviceId:
+          $ref: '#/components/schemas/DeviceId'
+        lastKnownCursor:
+          anyOf:
+            - $ref: '#/components/schemas/CursorToken'
+            - type: 'null'
+        mutations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncMutation'
+    SyncPushResponse:
+      type: object
+      required:
+        - accepted
+        - conflicts
+        - cursor
+        - requiresBootstrap
+      properties:
+        accepted:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcceptedMutation'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConflictDto'
+        cursor:
+          $ref: '#/components/schemas/CursorToken'
+        requiresBootstrap:
+          type: boolean
+    SyncRecord:
+      anyOf:
+        - $ref: '#/components/schemas/UserProfile'
+        - $ref: '#/components/schemas/Pet'
+        - $ref: '#/components/schemas/PetMembership'
+        - $ref: '#/components/schemas/EventType'
+        - $ref: '#/components/schemas/PetEvent'
+        - $ref: '#/components/schemas/WeightEntry'
+    SyncRecordBase:
+      type: object
+      required:
+        - id
+        - version
+        - updatedAt
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          format: int64
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+    SyncSnapshot:
+      type: object
+      required:
+        - users
+        - pets
+        - memberships
+        - eventTypes
+        - petEvents
+        - weightEntries
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserProfile'
+        pets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pet'
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/PetMembership'
+        eventTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventType'
+        petEvents:
+          type: array
+          items:
+            $ref: '#/components/schemas/PetEvent'
+        weightEntries:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeightEntry'
+    Tombstone:
+      type: object
+      required:
+        - entityType
+        - id
+        - deletedAt
+        - version
+      properties:
+        entityType:
+          $ref: '#/components/schemas/SyncEntityType'
+        id:
+          $ref: '#/components/schemas/Uuid'
+        deletedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    UnauthorizedError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+    UpsertEventTypeMutation:
+      type: object
+      required:
+        - entityType
+        - operation
+        - payload
+      properties:
+        entityType:
+          type: string
+          enum:
+            - EVENT_TYPE
+        operation:
+          type: string
+          enum:
+            - UPSERT
+        payload:
+          $ref: '#/components/schemas/EventTypeWriteModel'
+      allOf:
+        - $ref: '#/components/schemas/SyncMutationMeta'
+    UpsertPetEventMutation:
+      type: object
+      required:
+        - entityType
+        - operation
+        - payload
+      properties:
+        entityType:
+          type: string
+          enum:
+            - PET_EVENT
+        operation:
+          type: string
+          enum:
+            - UPSERT
+        payload:
+          $ref: '#/components/schemas/PetEventWriteModel'
+      allOf:
+        - $ref: '#/components/schemas/SyncMutationMeta'
+    UpsertPetMutation:
+      type: object
+      required:
+        - entityType
+        - operation
+        - payload
+      properties:
+        entityType:
+          type: string
+          enum:
+            - PET
+        operation:
+          type: string
+          enum:
+            - UPSERT
+        payload:
+          $ref: '#/components/schemas/PetWriteModel'
+      allOf:
+        - $ref: '#/components/schemas/SyncMutationMeta'
+    UpsertWeightEntryMutation:
+      type: object
+      required:
+        - entityType
+        - operation
+        - payload
+      properties:
+        entityType:
+          type: string
+          enum:
+            - WEIGHT_ENTRY
+        operation:
+          type: string
+          enum:
+            - UPSERT
+        payload:
+          $ref: '#/components/schemas/WeightEntryWriteModel'
+      allOf:
+        - $ref: '#/components/schemas/SyncMutationMeta'
+    UserProfile:
+      type: object
+      required:
+        - email
+        - displayName
+        - createdAt
+      properties:
+        email:
+          type: string
+        displayName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      allOf:
+        - $ref: '#/components/schemas/SyncRecordBase'
+    Uuid:
+      type: string
+      format: uuid
+    WeightEntry:
+      type: object
+      required:
+        - petId
+        - date
+        - weightGrams
+        - createdAt
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        date:
+          type: string
+          format: date
+        weightGrams:
+          type: integer
+          format: int32
+        comment:
+          anyOf:
+            - type: string
+            - type: 'null'
+        createdAt:
+          type: string
+          format: date-time
+      allOf:
+        - $ref: '#/components/schemas/SyncRecordBase'
+    WeightEntryWriteModel:
+      type: object
+      required:
+        - petId
+        - date
+        - weightGrams
+      properties:
+        petId:
+          $ref: '#/components/schemas/Uuid'
+        date:
+          type: string
+          format: date
+        weightGrams:
+          type: integer
+          format: int32
+        comment:
+          anyOf:
+            - type: string
+            - type: 'null'
+servers:
+  - url: https://api.ivi.example
+    description: Primary API endpoint
+    variables: {}

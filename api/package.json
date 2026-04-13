@@ -1,0 +1,25 @@
+{
+  "name": "@ivi/api-contract",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "npm run generate:openapi",
+    "generate:openapi": "tsp compile src/main.tsp",
+    "check": "tsp compile src/main.tsp"
+  },
+  "keywords": [
+    "typespec",
+    "openapi",
+    "sync",
+    "ivi"
+  ],
+  "license": "UNLICENSED",
+  "description": "TypeSpec source of truth for the Ivi backend API and sync contract.",
+  "devDependencies": {
+    "@typespec/compiler": "^1.11.0",
+    "@typespec/http": "^1.11.0",
+    "@typespec/openapi": "^1.11.0",
+    "@typespec/openapi3": "^1.11.0",
+    "@typespec/rest": "^0.81.0"
+  }
+}
