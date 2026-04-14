@@ -14,7 +14,6 @@ data class HealthResponse(
     val status: String,
     val service: String,
     val contractVersion: String,
-    val contractSource: String,
 )
 
 fun Route.registerHealthRoutes(appConfig: AppConfig, databaseFactory: DatabaseFactory) {
@@ -29,7 +28,6 @@ fun Route.registerHealthRoutes(appConfig: AppConfig, databaseFactory: DatabaseFa
                     status = if (databaseHealth.connected) "ok" else "degraded",
                     service = "ivi-backend",
                     contractVersion = "0.1.0",
-                    contractSource = appConfig.contract.openApiPath,
                 ),
             )
         }

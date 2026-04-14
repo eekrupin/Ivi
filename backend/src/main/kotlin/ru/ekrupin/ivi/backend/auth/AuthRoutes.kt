@@ -1,24 +1,25 @@
 package ru.ekrupin.ivi.backend.auth
 
-import io.ktor.server.request.receiveText
+import io.ktor.server.application.call
+import io.ktor.server.request.receive
+import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
-import ru.ekrupin.ivi.backend.common.http.respondStub
 
-fun Route.registerAuthRoutes() {
+fun Route.registerAuthRoutes(authService: AuthService) {
     route("/v1/auth") {
         post("/register") {
-            call.receiveText()
-            call.respondStub("Auth register handler is not implemented yet.")
+            val request = call.receive<RegisterRequest>()
+            call.respond(authService.register(request))
         }
         post("/login") {
-            call.receiveText()
-            call.respondStub("Auth login handler is not implemented yet.")
+            val request = call.receive<LoginRequest>()
+            call.respond(authService.login(request))
         }
         post("/refresh") {
-            call.receiveText()
-            call.respondStub("Auth refresh handler is not implemented yet.")
+            val request = call.receive<RefreshRequest>()
+            call.respond(authService.refresh(request))
         }
     }
 }

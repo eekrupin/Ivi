@@ -1,6 +1,7 @@
 package ru.ekrupin.ivi.backend.db.repository
 
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import ru.ekrupin.ivi.backend.db.DatabaseFactory
@@ -37,6 +38,30 @@ class PetMembershipRepository(
     fun findById(id: UUID): PetMembershipRecord? = databaseFactory.dbQueryResult {
         PetMembershipsTable.selectAll()
             .where { PetMembershipsTable.id eq id }
+            .singleOrNull()
+            ?.toPetMembershipRecord()
+    }
+
+    fun listActiveByUserId(userId: UUID): List<PetMembershipRecord> = databaseFactory.dbQueryResult {
+        PetMembershipsTable.selectAll()
+            .where {
+                (PetMembershipsTable.userId eq userId) and
+                    (PetMembershipsTable.status eq MembershipStatusEntity.ACTIVE.name)
+            }
+            .map { it.toPetMembershipRecord() }
+    }
+
+    fun hasAnyActiveMembership(userId: UUID): Boolean = listActiveByUserId(userId).isNotEmpty()
+
+    fun findCurrentActiveMembership(userId: UUID): PetMembershipRecord? = listActiveByUserId(userId).firstOrNull()
+
+    fun findActiveByPetAndUser(petId: UUID, userId: UUID): PetMembershipRecord? = databaseFactory.dbQueryResult {
+        PetMembershipsTable.selectAll()
+            .where {
+                (PetMembershipsTable.petId eq petId) and
+                    (PetMembershipsTable.userId eq userId) and
+                    (PetMembershipsTable.status eq MembershipStatusEntity.ACTIVE.name)
+            }
             .singleOrNull()
             ?.toPetMembershipRecord()
     }

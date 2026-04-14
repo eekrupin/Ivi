@@ -3,6 +3,7 @@ package ru.ekrupin.ivi.backend.db.repository
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
 import ru.ekrupin.ivi.backend.db.DatabaseFactory
 import ru.ekrupin.ivi.backend.db.model.InviteRecord
 import ru.ekrupin.ivi.backend.db.model.InviteStatusEntity
@@ -49,6 +50,19 @@ class InviteRepository(
             .where { InvitesTable.code eq code }
             .singleOrNull()
             ?.toInviteRecord()
+    }
+
+    fun accept(id: UUID, acceptedByUserId: UUID): InviteRecord? {
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
+        databaseFactory.dbQuery {
+            InvitesTable.update({ InvitesTable.id eq id }) {
+                it[status] = InviteStatusEntity.ACCEPTED.name
+                it[InvitesTable.acceptedByUserId] = acceptedByUserId
+                it[acceptedAt] = now
+                it[updatedAt] = now
+            }
+        }
+        return findById(id)
     }
 
     private fun ResultRow.toInviteRecord(): InviteRecord = InviteRecord(

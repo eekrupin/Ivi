@@ -63,3 +63,12 @@ data class InviteRecord(
     val createdAt: Instant,
     val updatedAt: Instant,
 )
+
+data class RefreshTokenRecord(
+    val id: UUID,
+    val userId: UUID,
+    val tokenHash: String,
+    val expiresAt: Instant,
+    val revokedAt: Instant?,
+    val createdAt: Instant,
+)

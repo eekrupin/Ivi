@@ -13,6 +13,8 @@ val flywayVersion = "11.4.0"
 val exposedVersion = "0.57.0"
 val hikariVersion = "6.2.1"
 val postgresVersion = "42.7.5"
+val jwtVersion = "4.4.0"
+val bcryptVersion = "0.4"
 
 repositories {
     mavenCentral()
@@ -32,6 +34,8 @@ tasks.withType<Test>().configureEach {
 
 dependencies {
     implementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-auth-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-auth-jwt-jvm:$ktorVersion")
     implementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation-jvm:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:$ktorVersion")
@@ -43,6 +47,8 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
     implementation("com.zaxxer:HikariCP:$hikariVersion")
     implementation("org.postgresql:postgresql:$postgresVersion")
+    implementation("com.auth0:java-jwt:$jwtVersion")
+    implementation("org.mindrot:jbcrypt:$bcryptVersion")
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
 
     testImplementation(kotlin("test"))
