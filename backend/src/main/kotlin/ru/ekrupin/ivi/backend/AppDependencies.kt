@@ -7,6 +7,7 @@ import ru.ekrupin.ivi.backend.invite.InviteService
 import ru.ekrupin.ivi.backend.pet.PetAccessService
 import ru.ekrupin.ivi.backend.sync.SyncBootstrapService
 import ru.ekrupin.ivi.backend.sync.SyncChangesService
+import ru.ekrupin.ivi.backend.sync.SyncPushService
 
 data class AppDependencies(
     val authService: AuthService,
@@ -15,5 +16,6 @@ data class AppDependencies(
     val petDomainDataService: PetDomainDataService,
     val syncBootstrapService: SyncBootstrapService,
     val syncChangesService: SyncChangesService,
+    val syncPushService: SyncPushService,
     val tokenService: TokenService,
 )

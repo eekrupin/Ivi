@@ -29,6 +29,7 @@ import ru.ekrupin.ivi.backend.pet.PetAccessService
 import ru.ekrupin.ivi.backend.routing.configureRouting
 import ru.ekrupin.ivi.backend.sync.SyncBootstrapService
 import ru.ekrupin.ivi.backend.sync.SyncChangesService
+import ru.ekrupin.ivi.backend.sync.SyncPushService
 
 fun main(args: Array<String>) {
     io.ktor.server.netty.EngineMain.main(args)
@@ -111,6 +112,13 @@ fun Application.module() {
             petRepository = petRepository,
             petMembershipRepository = petMembershipRepository,
             petDomainDataService = petDomainDataService,
+        ),
+        syncPushService = SyncPushService(
+            petRepository = petRepository,
+            petMembershipRepository = petMembershipRepository,
+            eventTypeRepository = eventTypeRepository,
+            petEventRepository = petEventRepository,
+            weightEntryRepository = weightEntryRepository,
         ),
         tokenService = tokenService,
     )

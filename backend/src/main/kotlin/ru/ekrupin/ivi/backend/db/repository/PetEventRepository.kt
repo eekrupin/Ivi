@@ -38,9 +38,9 @@ data class UpdatePetEventCommand(
 class PetEventRepository(
     private val databaseFactory: DatabaseFactory,
 ) {
-    fun create(command: CreatePetEventCommand): PetEventRecord {
+    fun create(command: CreatePetEventCommand, entityId: UUID = UUID.randomUUID()): PetEventRecord {
         val now = OffsetDateTime.now(ZoneOffset.UTC)
-        val id = UUID.randomUUID()
+        val id = entityId
 
         databaseFactory.dbQuery {
             PetEventsTable.insert {
@@ -108,6 +108,7 @@ class PetEventRepository(
                 it[comment] = command.comment
                 it[notificationsEnabled] = command.notificationsEnabled
                 it[status] = command.status.name
+                it[deletedAt] = null
                 it[updatedAt] = now
                 it[version] = current.version + 1
             }

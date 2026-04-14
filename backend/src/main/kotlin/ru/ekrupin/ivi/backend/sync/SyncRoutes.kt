@@ -1,6 +1,7 @@
 package ru.ekrupin.ivi.backend.sync
 
 import io.ktor.server.application.call
+import io.ktor.server.request.receive
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -11,7 +12,11 @@ import ru.ekrupin.ivi.backend.auth.requireAuthenticatedUser
 import ru.ekrupin.ivi.backend.common.error.ApiException
 import ru.ekrupin.ivi.backend.common.http.respondStub
 
-fun Route.registerSyncRoutes(syncBootstrapService: SyncBootstrapService, syncChangesService: SyncChangesService) {
+fun Route.registerSyncRoutes(
+    syncBootstrapService: SyncBootstrapService,
+    syncChangesService: SyncChangesService,
+    syncPushService: SyncPushService,
+) {
     route("/v1/sync") {
         get("/bootstrap") {
             val currentUser = call.requireAuthenticatedUser()
@@ -28,8 +33,9 @@ fun Route.registerSyncRoutes(syncBootstrapService: SyncBootstrapService, syncCha
             call.respond(syncChangesService.changesForUser(currentUser.userId, cursor))
         }
         post("/push") {
-            call.receiveText()
-            call.respondStub("Sync push handler is not implemented yet.")
+            val currentUser = call.requireAuthenticatedUser()
+            val request = call.receive<SyncPushRequest>()
+            call.respond(syncPushService.pushForUser(currentUser.userId, request))
         }
     }
 }

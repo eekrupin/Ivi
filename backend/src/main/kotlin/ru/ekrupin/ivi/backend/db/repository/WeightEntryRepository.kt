@@ -31,9 +31,9 @@ data class UpdateWeightEntryCommand(
 class WeightEntryRepository(
     private val databaseFactory: DatabaseFactory,
 ) {
-    fun create(command: CreateWeightEntryCommand): WeightEntryRecord {
+    fun create(command: CreateWeightEntryCommand, entityId: UUID = UUID.randomUUID()): WeightEntryRecord {
         val now = OffsetDateTime.now(ZoneOffset.UTC)
-        val id = UUID.randomUUID()
+        val id = entityId
 
         databaseFactory.dbQuery {
             WeightEntriesTable.insert {
@@ -95,6 +95,7 @@ class WeightEntryRepository(
                 it[date] = command.date
                 it[weightGrams] = command.weightGrams
                 it[comment] = command.comment
+                it[deletedAt] = null
                 it[updatedAt] = now
                 it[version] = current.version + 1
             }

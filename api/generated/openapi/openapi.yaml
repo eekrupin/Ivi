@@ -576,6 +576,7 @@ components:
         - VERSION_MISMATCH
         - CURSOR_EXPIRED
         - FORBIDDEN
+        - INVALID_REFERENCE
     CreateInviteRequest:
       type: object
       properties:

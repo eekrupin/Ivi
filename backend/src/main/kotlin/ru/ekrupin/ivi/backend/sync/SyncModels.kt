@@ -1,6 +1,8 @@
 package ru.ekrupin.ivi.backend.sync
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import ru.ekrupin.ivi.backend.auth.UserProfileResponse
 import ru.ekrupin.ivi.backend.db.model.EventTypeRecord
 import ru.ekrupin.ivi.backend.db.model.PetEventRecord
@@ -185,3 +187,77 @@ fun WeightEntryRecord.toSyncWeightEntryResponse(): SyncWeightEntryResponse = Syn
 )
 
 internal fun Instant.toApiInstantString(): String = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(atOffset(ZoneOffset.UTC))
+
+@Serializable
+data class SyncPushRequest(
+    val deviceId: String,
+    val lastKnownCursor: String? = null,
+    val mutations: List<SyncMutationEnvelope>,
+)
+
+@Serializable
+data class SyncPushResponse(
+    val accepted: List<AcceptedMutationResponse>,
+    val conflicts: List<ConflictDtoResponse>,
+    val cursor: String,
+    val requiresBootstrap: Boolean,
+)
+
+@Serializable
+data class AcceptedMutationResponse(
+    val clientMutationId: String? = null,
+    val entityType: String,
+    val entityId: String,
+    val version: Long,
+)
+
+@Serializable
+data class ConflictDtoResponse(
+    val entityType: String,
+    val entityId: String,
+    val clientMutationId: String? = null,
+    val baseVersion: Long? = null,
+    val serverVersion: Long,
+    val reason: String,
+    val serverRecord: JsonElement? = null,
+)
+
+@Serializable
+data class SyncMutationEnvelope(
+    val clientMutationId: String? = null,
+    val entityId: String,
+    val baseVersion: Long? = null,
+    val entityType: String,
+    val operation: String,
+    val payload: JsonElement? = null,
+)
+
+@Serializable
+data class SyncEventTypeWriteModel(
+    val petId: String,
+    val name: String,
+    val category: String,
+    val defaultDurationDays: Int? = null,
+    val isActive: Boolean,
+    val colorArgb: Int? = null,
+    val iconKey: String? = null,
+)
+
+@Serializable
+data class SyncPetEventWriteModel(
+    val petId: String,
+    val eventTypeId: String,
+    val eventDate: String,
+    val dueDate: String? = null,
+    val comment: String? = null,
+    val notificationsEnabled: Boolean,
+    val status: String,
+)
+
+@Serializable
+data class SyncWeightEntryWriteModel(
+    val petId: String,
+    val date: String,
+    val weightGrams: Int,
+    val comment: String? = null,
+)

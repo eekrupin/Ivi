@@ -86,6 +86,7 @@ enum ConflictReason {
   VERSION_MISMATCH,
   CURSOR_EXPIRED,
   FORBIDDEN,
+  INVALID_REFERENCE,
 }
 
 enum PhotoUploadStatus {

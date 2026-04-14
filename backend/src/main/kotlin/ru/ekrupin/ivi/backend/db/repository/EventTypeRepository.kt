@@ -37,9 +37,9 @@ data class UpdateEventTypeCommand(
 class EventTypeRepository(
     private val databaseFactory: DatabaseFactory,
 ) {
-    fun create(command: CreateEventTypeCommand): EventTypeRecord {
+    fun create(command: CreateEventTypeCommand, entityId: UUID = UUID.randomUUID()): EventTypeRecord {
         val now = OffsetDateTime.now(ZoneOffset.UTC)
-        val id = UUID.randomUUID()
+        val id = entityId
 
         databaseFactory.dbQuery {
             EventTypesTable.insert {
@@ -107,6 +107,7 @@ class EventTypeRepository(
                 it[isActive] = command.isActive
                 it[colorArgb] = command.colorArgb
                 it[iconKey] = command.iconKey
+                it[deletedAt] = null
                 it[updatedAt] = now
                 it[version] = current.version + 1
             }
