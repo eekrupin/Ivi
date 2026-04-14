@@ -46,6 +46,15 @@ class UserRepository(
             ?.toUserRecord()
     }
 
+    fun listByIds(ids: Collection<UUID>): List<UserRecord> {
+        if (ids.isEmpty()) return emptyList()
+        return databaseFactory.dbQueryResult {
+            UsersTable.selectAll()
+                .where { UsersTable.id inList ids }
+                .map { it.toUserRecord() }
+        }
+    }
+
     private fun ResultRow.toUserRecord(): UserRecord = UserRecord(
         id = this[UsersTable.id].value,
         email = this[UsersTable.email],

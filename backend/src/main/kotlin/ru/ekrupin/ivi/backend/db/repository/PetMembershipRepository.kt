@@ -66,6 +66,15 @@ class PetMembershipRepository(
             ?.toPetMembershipRecord()
     }
 
+    fun listActiveByPetId(petId: UUID): List<PetMembershipRecord> = databaseFactory.dbQueryResult {
+        PetMembershipsTable.selectAll()
+            .where {
+                (PetMembershipsTable.petId eq petId) and
+                    (PetMembershipsTable.status eq MembershipStatusEntity.ACTIVE.name)
+            }
+            .map { it.toPetMembershipRecord() }
+    }
+
     private fun ResultRow.toPetMembershipRecord(): PetMembershipRecord = PetMembershipRecord(
         id = this[PetMembershipsTable.id].value,
         petId = this[PetMembershipsTable.petId].value,
