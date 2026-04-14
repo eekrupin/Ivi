@@ -10,6 +10,7 @@ import ru.ekrupin.ivi.backend.db.DatabaseFactory
 import ru.ekrupin.ivi.backend.db.model.PetEventRecord
 import ru.ekrupin.ivi.backend.db.model.PetEventStatusEntity
 import ru.ekrupin.ivi.backend.db.schema.PetEventsTable
+import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -79,6 +80,21 @@ class PetEventRepository(
             }
             .orderBy(PetEventsTable.eventDate to SortOrder.DESC, PetEventsTable.createdAt to SortOrder.DESC)
             .map { it.toPetEventRecord() }
+    }
+
+    fun listChangedByPetId(petId: UUID, sinceExclusive: Instant, untilInclusive: Instant): List<PetEventRecord> {
+        val since = sinceExclusive.atOffset(ZoneOffset.UTC)
+        val until = untilInclusive.atOffset(ZoneOffset.UTC)
+        return databaseFactory.dbQueryResult {
+            PetEventsTable.selectAll()
+                .where {
+                    (PetEventsTable.petId eq petId) and
+                        (PetEventsTable.updatedAt greater since) and
+                        (PetEventsTable.updatedAt lessEq until)
+                }
+                .orderBy(PetEventsTable.updatedAt to SortOrder.ASC)
+                .map { it.toPetEventRecord() }
+        }
     }
 
     fun update(id: UUID, command: UpdatePetEventCommand): PetEventRecord? {

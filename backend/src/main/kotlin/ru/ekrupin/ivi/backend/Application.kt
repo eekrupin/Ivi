@@ -28,6 +28,7 @@ import ru.ekrupin.ivi.backend.invite.InviteService
 import ru.ekrupin.ivi.backend.pet.PetAccessService
 import ru.ekrupin.ivi.backend.routing.configureRouting
 import ru.ekrupin.ivi.backend.sync.SyncBootstrapService
+import ru.ekrupin.ivi.backend.sync.SyncChangesService
 
 fun main(args: Array<String>) {
     io.ktor.server.netty.EngineMain.main(args)
@@ -75,6 +76,12 @@ fun Application.module() {
     val petEventRepository = PetEventRepository(databaseFactory)
     val weightEntryRepository = WeightEntryRepository(databaseFactory)
 
+    val petDomainDataService = PetDomainDataService(
+        eventTypeRepository = eventTypeRepository,
+        petEventRepository = petEventRepository,
+        weightEntryRepository = weightEntryRepository,
+    )
+
     val dependencies = AppDependencies(
         authService = AuthService(
             userRepository = userRepository,
@@ -92,20 +99,18 @@ fun Application.module() {
             petMembershipRepository = petMembershipRepository,
             inviteRepository = inviteRepository,
         ),
-        petDomainDataService = PetDomainDataService(
-            eventTypeRepository = eventTypeRepository,
-            petEventRepository = petEventRepository,
-            weightEntryRepository = weightEntryRepository,
-        ),
+        petDomainDataService = petDomainDataService,
         syncBootstrapService = SyncBootstrapService(
             userRepository = userRepository,
             petRepository = petRepository,
             petMembershipRepository = petMembershipRepository,
-            petDomainDataService = PetDomainDataService(
-                eventTypeRepository = eventTypeRepository,
-                petEventRepository = petEventRepository,
-                weightEntryRepository = weightEntryRepository,
-            ),
+            petDomainDataService = petDomainDataService,
+        ),
+        syncChangesService = SyncChangesService(
+            userRepository = userRepository,
+            petRepository = petRepository,
+            petMembershipRepository = petMembershipRepository,
+            petDomainDataService = petDomainDataService,
         ),
         tokenService = tokenService,
     )

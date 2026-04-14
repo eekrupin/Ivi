@@ -10,6 +10,7 @@ import ru.ekrupin.ivi.backend.db.DatabaseFactory
 import ru.ekrupin.ivi.backend.db.model.EventCategoryEntity
 import ru.ekrupin.ivi.backend.db.model.EventTypeRecord
 import ru.ekrupin.ivi.backend.db.schema.EventTypesTable
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -78,6 +79,21 @@ class EventTypeRepository(
             }
             .orderBy(EventTypesTable.createdAt to SortOrder.ASC)
             .map { it.toEventTypeRecord() }
+    }
+
+    fun listChangedByPetId(petId: UUID, sinceExclusive: Instant, untilInclusive: Instant): List<EventTypeRecord> {
+        val since = sinceExclusive.atOffset(ZoneOffset.UTC)
+        val until = untilInclusive.atOffset(ZoneOffset.UTC)
+        return databaseFactory.dbQueryResult {
+            EventTypesTable.selectAll()
+                .where {
+                    (EventTypesTable.petId eq petId) and
+                        (EventTypesTable.updatedAt greater since) and
+                        (EventTypesTable.updatedAt lessEq until)
+                }
+                .orderBy(EventTypesTable.updatedAt to SortOrder.ASC)
+                .map { it.toEventTypeRecord() }
+        }
     }
 
     fun update(id: UUID, command: UpdateEventTypeCommand): EventTypeRecord? {

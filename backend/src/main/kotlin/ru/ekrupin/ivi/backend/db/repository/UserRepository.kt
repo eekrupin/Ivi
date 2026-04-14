@@ -1,6 +1,7 @@
 package ru.ekrupin.ivi.backend.db.repository
 
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import ru.ekrupin.ivi.backend.db.DatabaseFactory
@@ -51,6 +52,21 @@ class UserRepository(
         return databaseFactory.dbQueryResult {
             UsersTable.selectAll()
                 .where { UsersTable.id inList ids }
+                .map { it.toUserRecord() }
+        }
+    }
+
+    fun listChangedByIds(ids: Collection<UUID>, sinceExclusive: Instant, untilInclusive: Instant): List<UserRecord> {
+        if (ids.isEmpty()) return emptyList()
+        val since = sinceExclusive.atOffset(ZoneOffset.UTC)
+        val until = untilInclusive.atOffset(ZoneOffset.UTC)
+        return databaseFactory.dbQueryResult {
+            UsersTable.selectAll()
+                .where {
+                    (UsersTable.id inList ids) and
+                        (UsersTable.updatedAt greater since) and
+                        (UsersTable.updatedAt lessEq until)
+                }
                 .map { it.toUserRecord() }
         }
     }

@@ -29,7 +29,7 @@ class SyncBootstrapService(
         val weightEntries = petDomainDataService.listWeightEntries(pet.id, includeDeleted = true)
 
         return SyncBootstrapResponse(
-            cursor = buildCursor(),
+            cursor = SyncCursorCodec.bootstrapCursor(),
             snapshot = SyncSnapshotResponse(
                 users = users.map { it.toSyncUserProfileResponse() },
                 pets = listOf(pet.toSyncPetResponse()),
@@ -44,6 +44,4 @@ class SyncBootstrapService(
             ),
         )
     }
-
-    private fun buildCursor(): String = "bootstrap:${Instant.now().toEpochMilli()}"
 }

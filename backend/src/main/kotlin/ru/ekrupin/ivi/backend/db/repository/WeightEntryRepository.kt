@@ -9,6 +9,7 @@ import org.jetbrains.exposed.sql.update
 import ru.ekrupin.ivi.backend.db.DatabaseFactory
 import ru.ekrupin.ivi.backend.db.model.WeightEntryRecord
 import ru.ekrupin.ivi.backend.db.schema.WeightEntriesTable
+import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -69,6 +70,21 @@ class WeightEntryRepository(
             }
             .orderBy(WeightEntriesTable.date to SortOrder.DESC, WeightEntriesTable.createdAt to SortOrder.DESC)
             .map { it.toWeightEntryRecord() }
+    }
+
+    fun listChangedByPetId(petId: UUID, sinceExclusive: Instant, untilInclusive: Instant): List<WeightEntryRecord> {
+        val since = sinceExclusive.atOffset(ZoneOffset.UTC)
+        val until = untilInclusive.atOffset(ZoneOffset.UTC)
+        return databaseFactory.dbQueryResult {
+            WeightEntriesTable.selectAll()
+                .where {
+                    (WeightEntriesTable.petId eq petId) and
+                        (WeightEntriesTable.updatedAt greater since) and
+                        (WeightEntriesTable.updatedAt lessEq until)
+                }
+                .orderBy(WeightEntriesTable.updatedAt to SortOrder.ASC)
+                .map { it.toWeightEntryRecord() }
+        }
     }
 
     fun update(id: UUID, command: UpdateWeightEntryCommand): WeightEntryRecord? {

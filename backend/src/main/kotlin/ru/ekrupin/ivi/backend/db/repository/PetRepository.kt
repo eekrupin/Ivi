@@ -1,11 +1,13 @@
 package ru.ekrupin.ivi.backend.db.repository
 
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import ru.ekrupin.ivi.backend.db.DatabaseFactory
 import ru.ekrupin.ivi.backend.db.model.PetRecord
 import ru.ekrupin.ivi.backend.db.schema.PetsTable
+import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -39,6 +41,21 @@ class PetRepository(
             .where { PetsTable.id eq id }
             .singleOrNull()
             ?.toPetRecord()
+    }
+
+    fun listChangedByIds(ids: Collection<UUID>, sinceExclusive: Instant, untilInclusive: Instant): List<PetRecord> {
+        if (ids.isEmpty()) return emptyList()
+        val since = sinceExclusive.atOffset(ZoneOffset.UTC)
+        val until = untilInclusive.atOffset(ZoneOffset.UTC)
+        return databaseFactory.dbQueryResult {
+            PetsTable.selectAll()
+                .where {
+                    (PetsTable.id inList ids) and
+                        (PetsTable.updatedAt greater since) and
+                        (PetsTable.updatedAt lessEq until)
+                }
+                .map { it.toPetRecord() }
+        }
     }
 
     private fun ResultRow.toPetRecord(): PetRecord = PetRecord(

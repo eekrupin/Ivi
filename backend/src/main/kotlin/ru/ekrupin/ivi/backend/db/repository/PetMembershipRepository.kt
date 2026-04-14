@@ -9,6 +9,7 @@ import ru.ekrupin.ivi.backend.db.model.MembershipRoleEntity
 import ru.ekrupin.ivi.backend.db.model.MembershipStatusEntity
 import ru.ekrupin.ivi.backend.db.model.PetMembershipRecord
 import ru.ekrupin.ivi.backend.db.schema.PetMembershipsTable
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -73,6 +74,21 @@ class PetMembershipRepository(
                     (PetMembershipsTable.status eq MembershipStatusEntity.ACTIVE.name)
             }
             .map { it.toPetMembershipRecord() }
+    }
+
+    fun listActiveByPetIdChangedBetween(petId: UUID, sinceExclusive: Instant, untilInclusive: Instant): List<PetMembershipRecord> {
+        val since = sinceExclusive.atOffset(ZoneOffset.UTC)
+        val until = untilInclusive.atOffset(ZoneOffset.UTC)
+        return databaseFactory.dbQueryResult {
+            PetMembershipsTable.selectAll()
+                .where {
+                    (PetMembershipsTable.petId eq petId) and
+                        (PetMembershipsTable.status eq MembershipStatusEntity.ACTIVE.name) and
+                        (PetMembershipsTable.updatedAt greater since) and
+                        (PetMembershipsTable.updatedAt lessEq until)
+                }
+                .map { it.toPetMembershipRecord() }
+        }
     }
 
     private fun ResultRow.toPetMembershipRecord(): PetMembershipRecord = PetMembershipRecord(

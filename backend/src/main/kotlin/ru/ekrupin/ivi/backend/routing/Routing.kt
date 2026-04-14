@@ -22,7 +22,7 @@ fun Application.configureRouting(appConfig: AppConfig, databaseFactory: Database
             registerMeRoutes(dependencies.petAccessService)
             registerPetRoutes(dependencies.petAccessService)
             registerInviteRoutes(dependencies.inviteService)
-            registerSyncRoutes(dependencies.syncBootstrapService)
+            registerSyncRoutes(dependencies.syncBootstrapService, dependencies.syncChangesService)
         }
         registerPhotoRoutes()
     }
