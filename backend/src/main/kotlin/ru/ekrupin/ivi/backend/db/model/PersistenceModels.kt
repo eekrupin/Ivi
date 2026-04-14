@@ -21,6 +21,20 @@ enum class InviteStatusEntity {
     EXPIRED,
 }
 
+enum class EventCategoryEntity {
+    TICK,
+    DEWORMING,
+    VACCINATION,
+    CHECKUP,
+    OTHER,
+}
+
+enum class PetEventStatusEntity {
+    ACTIVE,
+    COMPLETED,
+    ARCHIVED,
+}
+
 data class UserRecord(
     val id: UUID,
     val email: String,
@@ -71,4 +85,46 @@ data class RefreshTokenRecord(
     val expiresAt: Instant,
     val revokedAt: Instant?,
     val createdAt: Instant,
+)
+
+data class EventTypeRecord(
+    val id: UUID,
+    val petId: UUID,
+    val name: String,
+    val category: EventCategoryEntity,
+    val defaultDurationDays: Int?,
+    val isActive: Boolean,
+    val colorArgb: Int?,
+    val iconKey: String?,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant?,
+    val version: Long,
+)
+
+data class PetEventRecord(
+    val id: UUID,
+    val petId: UUID,
+    val eventTypeId: UUID,
+    val eventDate: LocalDate,
+    val dueDate: LocalDate?,
+    val comment: String?,
+    val notificationsEnabled: Boolean,
+    val status: PetEventStatusEntity,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant?,
+    val version: Long,
+)
+
+data class WeightEntryRecord(
+    val id: UUID,
+    val petId: UUID,
+    val date: LocalDate,
+    val weightGrams: Int,
+    val comment: String?,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant?,
+    val version: Long,
 )

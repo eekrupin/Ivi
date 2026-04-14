@@ -16,10 +16,14 @@ import ru.ekrupin.ivi.backend.config.AppConfig
 import ru.ekrupin.ivi.backend.db.DatabaseConfig
 import ru.ekrupin.ivi.backend.db.DatabaseFactory
 import ru.ekrupin.ivi.backend.db.repository.InviteRepository
+import ru.ekrupin.ivi.backend.db.repository.EventTypeRepository
 import ru.ekrupin.ivi.backend.db.repository.PetMembershipRepository
+import ru.ekrupin.ivi.backend.db.repository.PetEventRepository
 import ru.ekrupin.ivi.backend.db.repository.PetRepository
 import ru.ekrupin.ivi.backend.db.repository.RefreshTokenRepository
 import ru.ekrupin.ivi.backend.db.repository.UserRepository
+import ru.ekrupin.ivi.backend.db.repository.WeightEntryRepository
+import ru.ekrupin.ivi.backend.domain.PetDomainDataService
 import ru.ekrupin.ivi.backend.invite.InviteService
 import ru.ekrupin.ivi.backend.pet.PetAccessService
 import ru.ekrupin.ivi.backend.routing.configureRouting
@@ -66,6 +70,9 @@ fun Application.module() {
     val petMembershipRepository = PetMembershipRepository(databaseFactory)
     val inviteRepository = InviteRepository(databaseFactory)
     val refreshTokenRepository = RefreshTokenRepository(databaseFactory)
+    val eventTypeRepository = EventTypeRepository(databaseFactory)
+    val petEventRepository = PetEventRepository(databaseFactory)
+    val weightEntryRepository = WeightEntryRepository(databaseFactory)
 
     val dependencies = AppDependencies(
         authService = AuthService(
@@ -83,6 +90,11 @@ fun Application.module() {
             petRepository = petRepository,
             petMembershipRepository = petMembershipRepository,
             inviteRepository = inviteRepository,
+        ),
+        petDomainDataService = PetDomainDataService(
+            eventTypeRepository = eventTypeRepository,
+            petEventRepository = petEventRepository,
+            weightEntryRepository = weightEntryRepository,
         ),
         tokenService = tokenService,
     )
