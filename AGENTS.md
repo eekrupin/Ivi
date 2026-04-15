@@ -85,10 +85,12 @@
 - Android Room-модель уже расширена sync-метаданными для `pets`, `event_types`, `pet_events`, `weight_entries`, а также заведена локальная таблица `sync_outbox`
 - локальные репозитории `event_types`, `pet_events`, `weight_entries` уже пишут мутации в outbox в одной Room-транзакции с записью локальных изменений
 - Android-клиент уже получил первый client-side sync read foundation: network layer для `bootstrap`/`changes`, `sync_state`-хранилище cursor и транзакционный import/apply слой поверх Room
+- Android-клиент уже получил первый client-side sync push foundation: drain `sync_outbox` через `POST /v1/sync/push` с обработкой `accepted`, `conflicts` и `requiresBootstrap`
+- В приложении уже появился ручной app-level entrypoint sync V1 через экран настроек: полный flow связывает bootstrap / push / changes и показывает минимальный sync-статус
 
 Что в работе:
 - подготовка простого серверного контура для двух пользователей и одного питомца
-- подготовка следующего клиентского этапа после уже готового read-path sync: drain `sync_outbox` через `sync/push`
+- подготовка следующего клиентского этапа после уже готового ручного запуска sync: более естественный app-level trigger и/или lifecycle/background orchestration
 - подготовка `infra/` следующим этапом, уже без переноса Android и без переопределения API-контракта вручную
 - локальная клиентская полировка больше не является единственным фокусом этапа
 
@@ -934,6 +936,25 @@ UX разрешений на уведомления:
 - И bootstrap import, и changes pull после успешного применения обновляют `syncState = SYNCED`, `serverVersion`, `serverUpdatedAt`, `deletedAt`, `lastSyncedAt` и сохраняют новый cursor.
 - Текущая клиентская sync-реализация пока не вызывает `sync/push`, не дренирует outbox и не запускается автоматически из UI/background — это будет следующим шагом.
 
+### Клиентский push path
+- На текущем шаге Android получил client-side вызов `POST /v1/sync/push` через уже существующий sync network layer.
+- Drain outbox берет `PENDING` записи из `sync_outbox`, помечает их как `IN_FLIGHT`, формирует пакет `mutations` и отправляет его на сервер.
+- Для V1 выбрана простая terminal-стратегия для успешно принятых мутаций: после обработки `accepted` соответствующие outbox-записи физически удаляются.
+- Для `accepted` клиент обновляет локальные сущности: `serverVersion`, `serverUpdatedAt`, `syncState = SYNCED`, `lastSyncedAt`.
+- Для `conflicts` выбран простой и честный V1-подход: серверный `serverRecord` пока не применяется автоматически поверх локальной сущности; локальная запись переводится в `syncState = CONFLICT`, а соответствующая outbox-запись помечается как `FAILED`.
+- Для `requiresBootstrap = true` клиент не считает push успешным: текущий пакет помечается `FAILED`, а в `sync_state.requiresBootstrap = true` фиксируется необходимость следующего полного bootstrap.
+- После успешного `push` клиент сохраняет cursor из server-side ответа как новый read-cursor; отдельный автоматический follow-up `changes` после push в текущей V1-реализации пока не выполняется.
+- Первый end-to-end cycle теперь выглядит так: локальная мутация -> запись в `sync_outbox` -> drain `sync/push` -> `accepted/conflicts` -> обновление локальной сущности и `sync_state`.
+
+### App-level sync orchestration V1
+- В приложении теперь есть отдельный `RunFullSyncUseCase`, который объединяет уже существующие bootstrap import, changes pull и drain outbox.
+- Для V1 выбран простой app-level порядок: если `requiresBootstrap = true` или cursor отсутствует, то при пустом outbox выполняется `bootstrap`; если cursor уже есть, то при наличии pending outbox сначала выполняется `push`, затем `changes`.
+- Если нужен bootstrap, но outbox уже не пустой, orchestration не пытается автоматически merge-ить состояния и возвращает отдельный результат `RequiresBootstrap`.
+- Если `push` завершился конфликтами, общий sync cycle не считается полностью успешным: orchestration возвращает `ConflictsDetected`, но всё равно выполняет `changes` для выравнивания server-driven состояния.
+- Ручной запуск sync сейчас доступен из экрана настроек: пользователь вводит base URL и access token и нажимает кнопку ручной синхронизации.
+- На уровне приложения пока показываются только минимальные статусы: `Running`, `Success`, `Conflicts`, `RequiresBootstrap`, `Error`.
+- Текущая ручная интеграция сознательно debug/manual-friendly: конфигурация сервера и access token пока не сохраняются как полноценная auth/session модель приложения.
+
 ### D-023
 Статус: принято
 Решение:
@@ -948,9 +969,16 @@ UX разрешений на уведомления:
 Причина:
 - это дает первый рабочий end-to-end sync cycle без преждевременной фоновой оркестрации, retry-машины и conflict UI
 
+### D-025
+Статус: принято
+Решение:
+- app-level sync V1 строится вокруг одного `RunFullSyncUseCase` с простым ручным запуском из экрана настроек и порядком `bootstrap` либо `push -> changes`, в зависимости от `cursor/requiresBootstrap/outbox`
+Причина:
+- это дает реальную точку запуска sync из приложения без premature background orchestration и без сложной state machine
+
 ## План следующих шагов
-1. Подключить реальный запуск client-side sync pipeline в приложении и/или use-case orchestration поверх уже готовых bootstrap/changes/push сервисов.
-2. После этого начать реальную клиент-серверную интеграцию sync без фото.
+1. Следующим шагом выбрать один из двух вариантов app-level интеграции: lifecycle-trigger для foreground sync или background sync foundation.
+2. После этого начать реальную клиент-серверную интеграцию sync без фото уже не только в ручном режиме, но и в более естественном сценарии использования.
 3. Затем уже итеративно усиливать conflict-handling, retry и background sync-детали без пересборки базового контракта.
 
 ## Практика работы в этом репозитории

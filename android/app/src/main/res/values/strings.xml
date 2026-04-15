@@ -118,6 +118,16 @@
     <string name="settings_open_system_settings">Открыть настройки приложения</string>
     <string name="settings_permission_denied">Можно продолжать пользоваться приложением без уведомлений, но напоминания не будут показаны.</string>
     <string name="settings_schedule_preview">Напоминания планируются только для актуальных событий с датой контроля и включённым флагом уведомлений.</string>
+    <string name="settings_sync_title">Ручная синхронизация</string>
+    <string name="settings_sync_description">Временный ручной запуск V1 sync flow: bootstrap, push и changes. Нужен адрес backend и действующий access token.</string>
+    <string name="settings_sync_base_url">Адрес backend</string>
+    <string name="settings_sync_access_token">Access token</string>
+    <string name="settings_sync_run">Запустить синхронизацию</string>
+    <string name="settings_sync_idle">Синхронизация ещё не запускалась вручную</string>
+    <string name="settings_sync_running">Синхронизация выполняется…</string>
+    <string name="settings_sync_success">Синхронизация завершилась успешно</string>
+    <string name="settings_sync_conflicts">Синхронизация завершилась с конфликтами</string>
+    <string name="settings_sync_requires_bootstrap">Сервер требует полный bootstrap перед следующим sync cycle</string>
 
     <string name="reminder_channel_name">Напоминания Иви</string>
     <string name="reminder_channel_description">Напоминания о событиях и датах контроля для Иви</string>

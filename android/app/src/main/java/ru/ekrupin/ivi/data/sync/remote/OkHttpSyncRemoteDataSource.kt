@@ -46,7 +46,7 @@ class OkHttpSyncRemoteDataSource @Inject constructor(
         okHttpClient.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                throw IOException("Sync request failed: HTTP ${response.code} $body")
+                throw SyncHttpException(response.code, "Sync request failed: HTTP ${response.code} $body")
             }
             JSONObject(body)
         }
@@ -62,7 +62,7 @@ class OkHttpSyncRemoteDataSource @Inject constructor(
         okHttpClient.newCall(request).execute().use { response ->
             val responseBody = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                throw IOException("Sync request failed: HTTP ${response.code} $responseBody")
+                throw SyncHttpException(response.code, "Sync request failed: HTTP ${response.code} $responseBody")
             }
             JSONObject(responseBody)
         }

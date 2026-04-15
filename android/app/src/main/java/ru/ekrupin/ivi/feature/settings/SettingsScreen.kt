@@ -48,6 +48,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val activity = context.findActivity()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val syncUiState by viewModel.syncUiState.collectAsStateWithLifecycle()
     var refreshTick by remember { mutableIntStateOf(0) }
     var firstEnabled by remember { mutableStateOf(true) }
     var firstDays by remember { mutableStateOf("7") }
@@ -186,6 +187,65 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 }
             }
         }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            ),
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_sync_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = stringResource(R.string.settings_sync_description),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedTextField(
+                    value = syncUiState.baseUrl,
+                    onValueChange = viewModel::updateSyncBaseUrl,
+                    label = { Text(stringResource(R.string.settings_sync_base_url)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = syncUiState.accessToken,
+                    onValueChange = viewModel::updateSyncAccessToken,
+                    label = { Text(stringResource(R.string.settings_sync_access_token)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                Text(
+                    text = syncUiState.status.label(context),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = when (syncUiState.status) {
+                        SyncStatus.Success -> MaterialTheme.colorScheme.primary
+                        SyncStatus.Conflicts -> MaterialTheme.colorScheme.tertiary
+                        SyncStatus.RequiresBootstrap -> MaterialTheme.colorScheme.error
+                        is SyncStatus.Error -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurface
+                    },
+                )
+                FilledTonalButton(
+                    onClick = viewModel::runSync,
+                    enabled = syncUiState.status != SyncStatus.Running,
+                ) {
+                    Text(
+                        text = if (syncUiState.status == SyncStatus.Running) {
+                            stringResource(R.string.settings_sync_running)
+                        } else {
+                            stringResource(R.string.settings_sync_run)
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -241,4 +301,14 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
+}
+
+@Composable
+private fun SyncStatus.label(context: Context): String = when (this) {
+    SyncStatus.Idle -> context.getString(R.string.settings_sync_idle)
+    SyncStatus.Running -> context.getString(R.string.settings_sync_running)
+    SyncStatus.Success -> context.getString(R.string.settings_sync_success)
+    SyncStatus.Conflicts -> context.getString(R.string.settings_sync_conflicts)
+    SyncStatus.RequiresBootstrap -> context.getString(R.string.settings_sync_requires_bootstrap)
+    is SyncStatus.Error -> message
 }

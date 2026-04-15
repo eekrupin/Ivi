@@ -12,8 +12,8 @@ class SyncCoordinator @Inject constructor(
     private val syncStateStore: SyncStateStore,
     private val syncOutboxStore: SyncOutboxStore,
     private val syncPushApplier: SyncPushApplier,
-) {
-    suspend fun bootstrapImport(baseUrl: String, accessToken: String) {
+) : SyncEngine {
+    override suspend fun bootstrapImport(baseUrl: String, accessToken: String) {
         require(syncOutboxStore.pending(limit = 1).isEmpty()) {
             "Bootstrap import в V1 разрешен только при пустом outbox"
         }
@@ -22,7 +22,7 @@ class SyncCoordinator @Inject constructor(
         syncStateStore.saveBootstrapCursor(response.cursor, LocalDateTime.now())
     }
 
-    suspend fun pullChanges(baseUrl: String, accessToken: String) {
+    override suspend fun pullChanges(baseUrl: String, accessToken: String) {
         val state = syncStateStore.get()
         val cursor = requireNotNull(state.cursor) {
             "Cursor отсутствует. Сначала выполните bootstrap import"
@@ -32,7 +32,7 @@ class SyncCoordinator @Inject constructor(
         syncStateStore.saveChangesCursor(response.cursor, LocalDateTime.now())
     }
 
-    suspend fun drainOutbox(baseUrl: String, accessToken: String, deviceId: String, limit: Int = 50): PushDrainResult {
+    override suspend fun drainOutbox(baseUrl: String, accessToken: String, deviceId: String, limit: Int): PushDrainResult {
         val pending = syncOutboxStore.pending(limit)
         if (pending.isEmpty()) return PushDrainResult.Empty
 

@@ -202,7 +202,7 @@ class SyncCoordinatorTest {
     }
 }
 
-private class FakeSyncRemoteDataSource : SyncRemoteDataSource {
+internal class FakeSyncRemoteDataSource : SyncRemoteDataSource {
     var lastBaseUrl: String? = null
     var lastAccessToken: String? = null
     var lastCursor: String? = null
@@ -252,7 +252,7 @@ private class FakeSyncRemoteDataSource : SyncRemoteDataSource {
     }
 }
 
-private class FakeSyncSnapshotStore : SyncSnapshotStore {
+internal class FakeSyncSnapshotStore : SyncSnapshotStore {
     var lastBootstrap: RemoteBootstrapResponse? = null
     var lastChanges: RemoteChangesResponse? = null
 
@@ -265,7 +265,7 @@ private class FakeSyncSnapshotStore : SyncSnapshotStore {
     }
 }
 
-private class FakeSyncStateStore(cursor: String? = null) : SyncStateStore {
+internal class FakeSyncStateStore(cursor: String? = null) : SyncStateStore {
     var state = SyncReadState(
         cursor = cursor,
         lastBootstrapAt = null,
@@ -289,7 +289,7 @@ private class FakeSyncStateStore(cursor: String? = null) : SyncStateStore {
     }
 }
 
-private class FakeSyncOutboxStore(
+internal class FakeSyncOutboxStore(
     private val items: MutableList<SyncOutboxEntity> = mutableListOf(),
 ) : SyncOutboxStore {
     val markedInFlight = mutableListOf<Long>()
@@ -304,7 +304,7 @@ private class FakeSyncOutboxStore(
     override suspend fun delete(ids: List<Long>) { deleted += ids }
 }
 
-private class FakeSyncPushApplier : SyncPushApplier {
+internal class FakeSyncPushApplier : SyncPushApplier {
     var acceptedCalls = 0
     var conflictCalls = 0
     var failedCalls = 0

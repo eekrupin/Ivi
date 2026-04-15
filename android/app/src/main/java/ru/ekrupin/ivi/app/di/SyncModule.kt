@@ -9,6 +9,8 @@ import okhttp3.OkHttpClient
 import ru.ekrupin.ivi.data.sync.RoomSyncPushApplier
 import ru.ekrupin.ivi.data.sync.RoomSyncSnapshotStore
 import ru.ekrupin.ivi.data.sync.RoomSyncStateStore
+import ru.ekrupin.ivi.data.sync.SyncCoordinator
+import ru.ekrupin.ivi.data.sync.SyncEngine
 import ru.ekrupin.ivi.data.sync.SyncPushApplier
 import ru.ekrupin.ivi.data.sync.SyncSnapshotStore
 import ru.ekrupin.ivi.data.sync.SyncStateStore
@@ -34,4 +36,7 @@ object SyncModule {
 
     @Provides
     fun provideSyncPushApplier(applier: RoomSyncPushApplier): SyncPushApplier = applier
+
+    @Provides
+    fun provideSyncEngine(coordinator: SyncCoordinator): SyncEngine = coordinator
 }
