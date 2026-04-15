@@ -13,8 +13,14 @@ interface PetDao {
     @Query("SELECT COUNT(*) FROM pets")
     suspend fun count(): Int
 
-    @Query("SELECT * FROM pets LIMIT 1")
+    @Query("SELECT * FROM pets WHERE deletedAt IS NULL LIMIT 1")
     fun observePet(): Flow<PetEntity?>
+
+    @Query("SELECT * FROM pets LIMIT 1")
+    suspend fun getPet(): PetEntity?
+
+    @Query("DELETE FROM pets")
+    suspend fun deleteAll()
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(pet: PetEntity)

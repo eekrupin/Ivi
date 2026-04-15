@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import ru.ekrupin.ivi.domain.model.EventCategory
 import java.time.LocalDateTime
+import ru.ekrupin.ivi.data.sync.model.SyncState
 
 @Entity(tableName = "event_types")
 data class EventTypeEntity(
@@ -16,4 +17,10 @@ data class EventTypeEntity(
     val iconKey: String?,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime,
+    val remoteId: String? = null,
+    val serverVersion: Long? = null,
+    val serverUpdatedAt: LocalDateTime? = null,
+    val deletedAt: LocalDateTime? = null,
+    val syncState: SyncState = SyncState.SYNCED,
+    val lastSyncedAt: LocalDateTime? = null,
 )

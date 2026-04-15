@@ -81,10 +81,14 @@
 - persistence-слой для foundation-сущностей уже переведен с placeholder на реальный Exposed DSL repository-уровень без DAO
 - `POST /v1/auth/register`, `POST /v1/auth/login`, `POST /v1/auth/refresh`, `GET /v1/me`, `POST /v1/pets`, `GET /v1/pets/current`, `POST /v1/pets/{petId}/invites`, `POST /v1/invites/accept` уже реализованы как реальные DB-backed handler-ы
 - `GET /v1/sync/bootstrap` и `GET /v1/sync/changes` уже реализованы как реальные DB-backed sync-endpoint'ы
+- `POST /v1/sync/push` уже реализован как реальный DB-backed mutation-endpoint для `event_types`, `pet_events`, `weight_entries`
+- Android Room-модель уже расширена sync-метаданными для `pets`, `event_types`, `pet_events`, `weight_entries`, а также заведена локальная таблица `sync_outbox`
+- локальные репозитории `event_types`, `pet_events`, `weight_entries` уже пишут мутации в outbox в одной Room-транзакции с записью локальных изменений
+- Android-клиент уже получил первый client-side sync read foundation: network layer для `bootstrap`/`changes`, `sync_state`-хранилище cursor и транзакционный import/apply слой поверх Room
 
 Что в работе:
 - подготовка простого серверного контура для двух пользователей и одного питомца
-- подготовка следующего sync-endpoint после уже реализованных `bootstrap` и `changes`: `push`
+- подготовка следующего клиентского этапа после уже готового read-path sync: drain `sync_outbox` через `sync/push`
 - подготовка `infra/` следующим этапом, уже без переноса Android и без переопределения API-контракта вручную
 - локальная клиентская полировка больше не является единственным фокусом этапа
 
@@ -913,10 +917,34 @@ UX разрешений на уведомления:
 Причина:
 - это минимально достаточная server-side модель для безопасного приема клиентских мутаций без преждевременного усложнения протокола и без попытки сразу синхронизировать все сущности проекта
 
+### D-022
+Статус: принято
+Решение:
+- Android local sync foundation хранит для syncable записей отдельный `remoteId` рядом с локальным Room `id`, а локальные мутации пишет в `sync_outbox` в одной транзакции с изменением данных
+Причина:
+- это позволяет сохранить текущий локальный UI/DAO-контур без тотального рефакторинга, но уже готовит клиент к bootstrap import, incremental changes и push outbox
+
+### Клиентский read-path sync
+- На текущем шаге Android получил минимальный network layer для `GET /v1/sync/bootstrap` и `GET /v1/sync/changes` через отдельный remote data source.
+- Текущий sync cursor и время последних успешных read-операций хранятся локально в Room-таблице `sync_state`.
+- Для V1 выбрано простое правило bootstrap import: он разрешен только при пустом `sync_outbox`, потому что локальные несинхронизированные мутации и серверный snapshot пока не пытаются автоматически merge-иться на клиенте.
+- Bootstrap import сейчас считается authoritative replace для syncable server-backed данных питомца: клиент транзакционно обновляет `pets`, полностью заменяет локальные `event_types`, `pet_events`, `weight_entries`, а также обновляет локальный cache пользователей и membership.
+- При bootstrap import локальное `photoUri` питомца сохраняется, потому что фото пока не входит в server-sync контур.
+- Changes pull берет сохраненный cursor из `sync_state`, запрашивает incremental changes и применяет обычные изменения и tombstones поверх локальной базы без очистки таблиц.
+- И bootstrap import, и changes pull после успешного применения обновляют `syncState = SYNCED`, `serverVersion`, `serverUpdatedAt`, `deletedAt`, `lastSyncedAt` и сохраняют новый cursor.
+- Текущая клиентская sync-реализация пока не вызывает `sync/push`, не дренирует outbox и не запускается автоматически из UI/background — это будет следующим шагом.
+
+### D-023
+Статус: принято
+Решение:
+- первый client-side sync read path строится вокруг отдельного remote data source, Room-таблицы `sync_state` и транзакционного import/apply слоя; bootstrap в V1 разрешен только при пустом outbox и выполняет authoritative replace server-backed данных
+Причина:
+- это дает работающую и понятную read-side интеграцию с уже готовым server-side sync trio, не пытаясь преждевременно решить сложный merge локальных несинхронизированных изменений с серверным snapshot
+
 ## План следующих шагов
-1. Адаптировать Android под `remoteId`/outbox/sync-метаданные и подготовить первый клиентский sync pipeline поверх уже готового server-side trio `bootstrap / changes / push`.
+1. Реализовать client-side drain `sync_outbox` через `POST /v1/sync/push` и связать его с уже готовыми bootstrap/changes read-path сервисами.
 2. После этого начать реальную клиент-серверную интеграцию sync без фото.
-3. Затем уже итеративно усиливать conflict-handling и sync-детали без пересборки базового контракта.
+3. Затем уже итеративно усиливать conflict-handling, retry и background sync-детали без пересборки базового контракта.
 
 ## Практика работы в этом репозитории
 - Перед существенными решениями сначала смотри реальные файлы репозитория; сейчас тут мало кода, поэтому особенно важно не делать ложных выводов о якобы существующей структуре.

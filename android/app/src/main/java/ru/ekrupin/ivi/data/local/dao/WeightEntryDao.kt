@@ -12,7 +12,7 @@ interface WeightEntryDao {
     @Query("SELECT COUNT(*) FROM weight_entries")
     suspend fun count(): Int
 
-    @Query("SELECT * FROM weight_entries ORDER BY date DESC")
+    @Query("SELECT * FROM weight_entries WHERE deletedAt IS NULL ORDER BY date DESC")
     fun observeAll(): Flow<List<WeightEntryEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -20,4 +20,13 @@ interface WeightEntryDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(weightEntries: List<WeightEntryEntity>)
+
+    @Query("SELECT * FROM weight_entries WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): WeightEntryEntity?
+
+    @Query("SELECT * FROM weight_entries WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getByRemoteId(remoteId: String): WeightEntryEntity?
+
+    @Query("DELETE FROM weight_entries")
+    suspend fun deleteAll()
 }

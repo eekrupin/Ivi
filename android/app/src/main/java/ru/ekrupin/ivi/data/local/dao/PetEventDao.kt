@@ -13,11 +13,17 @@ interface PetEventDao {
     @Query("SELECT COUNT(*) FROM pet_events")
     suspend fun count(): Int
 
-    @Query("SELECT * FROM pet_events ORDER BY eventDate DESC")
+    @Query("SELECT * FROM pet_events WHERE deletedAt IS NULL ORDER BY eventDate DESC")
     fun observeAll(): Flow<List<PetEventEntity>>
 
     @Query("SELECT * FROM pet_events WHERE id = :id LIMIT 1")
     fun observeById(id: Long): Flow<PetEventEntity?>
+
+    @Query("SELECT * FROM pet_events WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): PetEventEntity?
+
+    @Query("SELECT * FROM pet_events WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getByRemoteId(remoteId: String): PetEventEntity?
 
     @Query(
         """
@@ -29,6 +35,7 @@ interface PetEventDao {
             pet_events.status AS status
         FROM pet_events
         INNER JOIN event_types ON event_types.id = pet_events.eventTypeId
+        WHERE pet_events.deletedAt IS NULL AND event_types.deletedAt IS NULL
         """,
     )
     suspend fun getReminderEntries(): List<ReminderScheduleEntry>
@@ -39,12 +46,12 @@ interface PetEventDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(events: List<PetEventEntity>)
 
-    @Query("DELETE FROM pet_events WHERE id = :id")
-    suspend fun deleteById(id: Long)
-
     @Query("UPDATE pet_events SET status = :status, updatedAt = :updatedAt WHERE id = :id")
     suspend fun updateStatus(id: Long, status: ru.ekrupin.ivi.domain.model.PetEventStatus, updatedAt: java.time.LocalDateTime)
 
-    @Query("SELECT COUNT(*) FROM pet_events WHERE eventTypeId = :eventTypeId")
+    @Query("SELECT COUNT(*) FROM pet_events WHERE eventTypeId = :eventTypeId AND deletedAt IS NULL")
     suspend fun countByEventTypeId(eventTypeId: Long): Int
+
+    @Query("DELETE FROM pet_events")
+    suspend fun deleteAll()
 }

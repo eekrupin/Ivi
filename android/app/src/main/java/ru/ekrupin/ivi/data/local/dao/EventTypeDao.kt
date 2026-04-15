@@ -13,14 +13,17 @@ interface EventTypeDao {
     @Query("SELECT COUNT(*) FROM event_types")
     suspend fun count(): Int
 
-    @Query("SELECT * FROM event_types ORDER BY isActive DESC, name ASC")
+    @Query("SELECT * FROM event_types WHERE deletedAt IS NULL ORDER BY isActive DESC, name ASC")
     fun observeAll(): Flow<List<EventTypeEntity>>
 
-    @Query("SELECT * FROM event_types WHERE isActive = 1 ORDER BY name ASC")
+    @Query("SELECT * FROM event_types WHERE deletedAt IS NULL AND isActive = 1 ORDER BY name ASC")
     fun observeActive(): Flow<List<EventTypeEntity>>
 
     @Query("SELECT * FROM event_types WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): EventTypeEntity?
+
+    @Query("SELECT * FROM event_types WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getByRemoteId(remoteId: String): EventTypeEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(eventType: EventTypeEntity): Long
@@ -31,6 +34,6 @@ interface EventTypeDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(eventTypes: List<EventTypeEntity>)
 
-    @Query("DELETE FROM event_types WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    @Query("DELETE FROM event_types")
+    suspend fun deleteAll()
 }
