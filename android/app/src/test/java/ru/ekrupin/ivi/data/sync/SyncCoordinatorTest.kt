@@ -272,6 +272,9 @@ internal class FakeSyncStateStore(cursor: String? = null) : SyncStateStore {
         lastChangesAt = null,
         lastSuccessfulReadAt = null,
         requiresBootstrap = false,
+        configuredBaseUrl = null,
+        configuredAccessToken = null,
+        lastForegroundSyncStartedAt = null,
     )
 
     override suspend fun get(): SyncReadState = state
@@ -286,6 +289,14 @@ internal class FakeSyncStateStore(cursor: String? = null) : SyncStateStore {
 
     override suspend fun setRequiresBootstrap(value: Boolean) {
         state = state.copy(requiresBootstrap = value)
+    }
+
+    override suspend fun saveSyncConfig(baseUrl: String, accessToken: String) {
+        state = state.copy(configuredBaseUrl = baseUrl, configuredAccessToken = accessToken)
+    }
+
+    override suspend fun markForegroundSyncStarted(timestamp: LocalDateTime) {
+        state = state.copy(lastForegroundSyncStartedAt = timestamp)
     }
 }
 

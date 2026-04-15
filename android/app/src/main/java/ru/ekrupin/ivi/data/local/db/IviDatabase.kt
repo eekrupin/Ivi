@@ -35,7 +35,7 @@ import ru.ekrupin.ivi.data.local.entity.WeightEntryEntity
         SyncPetMembershipEntity::class,
         SyncStateEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(LocalDateConverters::class)

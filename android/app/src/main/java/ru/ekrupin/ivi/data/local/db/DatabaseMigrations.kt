@@ -133,3 +133,11 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         database.execSQL("ALTER TABLE sync_state ADD COLUMN requiresBootstrap INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE sync_state ADD COLUMN configuredBaseUrl TEXT")
+        database.execSQL("ALTER TABLE sync_state ADD COLUMN configuredAccessToken TEXT")
+        database.execSQL("ALTER TABLE sync_state ADD COLUMN lastForegroundSyncStartedAt TEXT")
+    }
+}

@@ -21,6 +21,7 @@ import ru.ekrupin.ivi.data.local.dao.WeightEntryDao
 import ru.ekrupin.ivi.data.local.db.MIGRATION_1_2
 import ru.ekrupin.ivi.data.local.db.MIGRATION_2_3
 import ru.ekrupin.ivi.data.local.db.MIGRATION_3_4
+import ru.ekrupin.ivi.data.local.db.MIGRATION_4_5
 import ru.ekrupin.ivi.data.local.db.IviDatabase
 import ru.ekrupin.ivi.data.sync.RoomSyncOutboxStore
 import ru.ekrupin.ivi.data.sync.SyncOutboxStore
@@ -33,7 +34,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): IviDatabase =
         Room.databaseBuilder(context, IviDatabase::class.java, "ivi.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
 
     @Provides fun providePetDao(database: IviDatabase): PetDao = database.petDao()

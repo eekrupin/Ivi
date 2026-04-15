@@ -5,12 +5,18 @@ import java.util.UUID
 import javax.inject.Inject
 import ru.ekrupin.ivi.data.sync.remote.SyncHttpException
 
+interface FullSyncRunner {
+    suspend fun run(baseUrl: String, accessToken: String): SyncRunResult
+}
+
 class RunFullSyncUseCase @Inject constructor(
     private val syncEngine: SyncEngine,
     private val syncStateStore: SyncStateStore,
     private val syncOutboxStore: SyncOutboxStore,
-) {
-    suspend operator fun invoke(baseUrl: String, accessToken: String): SyncRunResult {
+) : FullSyncRunner {
+    suspend operator fun invoke(baseUrl: String, accessToken: String): SyncRunResult = run(baseUrl, accessToken)
+
+    override suspend fun run(baseUrl: String, accessToken: String): SyncRunResult {
         if (baseUrl.isBlank() || accessToken.isBlank()) {
             return SyncRunResult.ValidationError("Укажите адрес сервера и access token")
         }

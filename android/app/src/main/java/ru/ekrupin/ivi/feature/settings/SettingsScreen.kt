@@ -226,6 +226,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = when (syncUiState.status) {
                         SyncStatus.Success -> MaterialTheme.colorScheme.primary
+                        SyncStatus.ForegroundSuccess -> MaterialTheme.colorScheme.primary
                         SyncStatus.Conflicts -> MaterialTheme.colorScheme.tertiary
                         SyncStatus.RequiresBootstrap -> MaterialTheme.colorScheme.error
                         is SyncStatus.Error -> MaterialTheme.colorScheme.error
@@ -308,6 +309,7 @@ private fun SyncStatus.label(context: Context): String = when (this) {
     SyncStatus.Idle -> context.getString(R.string.settings_sync_idle)
     SyncStatus.Running -> context.getString(R.string.settings_sync_running)
     SyncStatus.Success -> context.getString(R.string.settings_sync_success)
+    SyncStatus.ForegroundSuccess -> context.getString(R.string.settings_sync_foreground_success)
     SyncStatus.Conflicts -> context.getString(R.string.settings_sync_conflicts)
     SyncStatus.RequiresBootstrap -> context.getString(R.string.settings_sync_requires_bootstrap)
     is SyncStatus.Error -> message

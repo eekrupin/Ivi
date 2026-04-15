@@ -126,6 +126,7 @@
     <string name="settings_sync_idle">Синхронизация ещё не запускалась вручную</string>
     <string name="settings_sync_running">Синхронизация выполняется…</string>
     <string name="settings_sync_success">Синхронизация завершилась успешно</string>
+    <string name="settings_sync_foreground_success">Автосинхронизация в foreground завершилась успешно</string>
     <string name="settings_sync_conflicts">Синхронизация завершилась с конфликтами</string>
     <string name="settings_sync_requires_bootstrap">Сервер требует полный bootstrap перед следующим sync cycle</string>
 

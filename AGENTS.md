@@ -87,10 +87,11 @@
 - Android-клиент уже получил первый client-side sync read foundation: network layer для `bootstrap`/`changes`, `sync_state`-хранилище cursor и транзакционный import/apply слой поверх Room
 - Android-клиент уже получил первый client-side sync push foundation: drain `sync_outbox` через `POST /v1/sync/push` с обработкой `accepted`, `conflicts` и `requiresBootstrap`
 - В приложении уже появился ручной app-level entrypoint sync V1 через экран настроек: полный flow связывает bootstrap / push / changes и показывает минимальный sync-статус
+- В приложении уже появился foreground lifecycle-trigger sync V1: `MainActivity.onStart()` вызывает app-level runner поверх `RunFullSyncUseCase` с защитами от параллельных и слишком частых запусков
 
 Что в работе:
 - подготовка простого серверного контура для двух пользователей и одного питомца
-- подготовка следующего клиентского этапа после уже готового ручного запуска sync: более естественный app-level trigger и/или lifecycle/background orchestration
+- подготовка следующего клиентского этапа после foreground-trigger sync: background sync foundation и/или conflict UX
 - подготовка `infra/` следующим этапом, уже без переноса Android и без переопределения API-контракта вручную
 - локальная клиентская полировка больше не является единственным фокусом этапа
 
@@ -955,6 +956,14 @@ UX разрешений на уведомления:
 - На уровне приложения пока показываются только минимальные статусы: `Running`, `Success`, `Conflicts`, `RequiresBootstrap`, `Error`.
 - Текущая ручная интеграция сознательно debug/manual-friendly: конфигурация сервера и access token пока не сохраняются как полноценная auth/session модель приложения.
 
+### Foreground sync trigger V1
+- На текущем шаге автоматический foreground-trigger привязан к `MainActivity.onStart()`: при старте приложения и каждом возврате activity в foreground вызывается `AppSyncRunner.triggerForegroundSync()`.
+- Foreground-trigger не содержит собственной sync-логики и использует уже существующий `RunFullSyncUseCase` через общий app-level runner.
+- Для V1 добавлены простые защитные правила: если sync уже выполняется, новый запуск не стартует; если `baseUrl` или `accessToken` не сохранены, auto-sync не запускается; если предыдущий foreground sync стартовал менее 30 секунд назад, новый запуск пропускается.
+- Foreground-trigger обновляет тот же app-level sync status, что и ручной запуск, поэтому текущее состояние можно увидеть в экране настроек без отдельного UI.
+- Ошибки foreground sync пока не показываются агрессивно пользователю: они отражаются только в текущем sync-статусе, без popup/snackbar-шума.
+- Текущий foreground-trigger работает только пока жива `MainActivity`; это сознательно не background sync и не замена будущей WorkManager/background orchestration модели.
+
 ### D-023
 Статус: принято
 Решение:
@@ -976,10 +985,17 @@ UX разрешений на уведомления:
 Причина:
 - это дает реальную точку запуска sync из приложения без premature background orchestration и без сложной state machine
 
+### D-026
+Статус: принято
+Решение:
+- первый lifecycle-trigger sync V1 строится как foreground-trigger через `MainActivity.onStart()` и `AppSyncRunner`, с cooldown и защитой от параллельных запусков
+Причина:
+- это дает более естественный app-level запуск sync без premature background sync, WorkManager и сложной оркестрации жизненного цикла
+
 ## План следующих шагов
-1. Следующим шагом выбрать один из двух вариантов app-level интеграции: lifecycle-trigger для foreground sync или background sync foundation.
-2. После этого начать реальную клиент-серверную интеграцию sync без фото уже не только в ручном режиме, но и в более естественном сценарии использования.
-3. Затем уже итеративно усиливать conflict-handling, retry и background sync-детали без пересборки базового контракта.
+1. Следующим шагом выбрать один из двух вариантов усиления sync-интеграции: background sync foundation или conflict UX.
+2. После этого развивать реальную клиент-серверную интеграцию sync уже не только в foreground/manual режиме, но и в более устойчивом сценарии использования.
+3. Затем уже итеративно усиливать retry, background sync и conflict-handling без пересборки базового контракта.
 
 ## Практика работы в этом репозитории
 - Перед существенными решениями сначала смотри реальные файлы репозитория; сейчас тут мало кода, поэтому особенно важно не делать ложных выводов о якобы существующей структуре.

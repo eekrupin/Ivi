@@ -8,11 +8,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.ekrupin.ivi.app.core.AppConstants
-import ru.ekrupin.ivi.data.sync.RunFullSyncUseCase
-import ru.ekrupin.ivi.data.sync.SyncRunResult
+import ru.ekrupin.ivi.data.sync.AppSyncRunner
+import ru.ekrupin.ivi.data.sync.AppSyncStatus
+import ru.ekrupin.ivi.data.sync.SyncStateStore
 import ru.ekrupin.ivi.domain.model.ReminderSettings
 import ru.ekrupin.ivi.domain.repository.ReminderSettingsRepository
 import java.time.LocalDateTime
@@ -20,13 +22,29 @@ import java.time.LocalDateTime
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val reminderSettingsRepository: ReminderSettingsRepository,
-    private val runFullSyncUseCase: RunFullSyncUseCase,
+    private val appSyncRunner: AppSyncRunner,
+    private val syncStateStore: SyncStateStore,
 ) : ViewModel() {
     val settings: StateFlow<ReminderSettings?> = reminderSettingsRepository.observeSettings()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _syncUiState = MutableStateFlow(SyncUiState())
-    val syncUiState: StateFlow<SyncUiState> = _syncUiState.asStateFlow()
+    val syncUiState: StateFlow<SyncUiState> = combine(
+        _syncUiState,
+        appSyncRunner.status,
+    ) { ui, status ->
+        ui.copy(status = status.toSyncStatus())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SyncUiState())
+
+    init {
+        viewModelScope.launch {
+            val state = syncStateStore.get()
+            _syncUiState.value = _syncUiState.value.copy(
+                baseUrl = state.configuredBaseUrl ?: _syncUiState.value.baseUrl,
+                accessToken = state.configuredAccessToken ?: "",
+            )
+        }
+    }
 
     fun saveSettings(
         firstEnabled: Boolean,
@@ -52,19 +70,21 @@ class SettingsViewModel @Inject constructor(
 
     fun updateSyncBaseUrl(value: String) {
         _syncUiState.value = _syncUiState.value.copy(baseUrl = value)
+        viewModelScope.launch {
+            syncStateStore.saveSyncConfig(value, _syncUiState.value.accessToken)
+        }
     }
 
     fun updateSyncAccessToken(value: String) {
         _syncUiState.value = _syncUiState.value.copy(accessToken = value)
+        viewModelScope.launch {
+            syncStateStore.saveSyncConfig(_syncUiState.value.baseUrl, value)
+        }
     }
 
     fun runSync() {
         val current = _syncUiState.value
-        viewModelScope.launch {
-            _syncUiState.value = current.copy(status = SyncStatus.Running)
-            val result = runFullSyncUseCase(current.baseUrl.trim(), current.accessToken.trim())
-            _syncUiState.value = _syncUiState.value.copy(status = result.toSyncStatus())
-        }
+        appSyncRunner.triggerManualSync(current.baseUrl.trim(), current.accessToken.trim())
     }
 }
 
@@ -80,16 +100,15 @@ sealed interface SyncStatus {
     data object Success : SyncStatus
     data object Conflicts : SyncStatus
     data object RequiresBootstrap : SyncStatus
+    data object ForegroundSuccess : SyncStatus
     data class Error(val message: String) : SyncStatus
 }
 
-private fun SyncRunResult.toSyncStatus(): SyncStatus = when (this) {
-    is SyncRunResult.Success -> SyncStatus.Success
-    is SyncRunResult.RequiresBootstrap -> SyncStatus.RequiresBootstrap
-    SyncRunResult.ConflictsDetected -> SyncStatus.Conflicts
-    is SyncRunResult.ValidationError -> SyncStatus.Error(message)
-    SyncRunResult.AuthError -> SyncStatus.Error("Проверьте access token")
-    is SyncRunResult.NetworkError -> SyncStatus.Error(message)
-    is SyncRunResult.ServerError -> SyncStatus.Error("Ошибка сервера: HTTP $code")
-    is SyncRunResult.UnknownError -> SyncStatus.Error(message)
+private fun AppSyncStatus.toSyncStatus(): SyncStatus = when (this) {
+    AppSyncStatus.Idle -> SyncStatus.Idle
+    is AppSyncStatus.Running -> SyncStatus.Running
+    is AppSyncStatus.Success -> if (trigger == ru.ekrupin.ivi.data.sync.AppSyncTrigger.Foreground) SyncStatus.ForegroundSuccess else SyncStatus.Success
+    is AppSyncStatus.Conflicts -> SyncStatus.Conflicts
+    is AppSyncStatus.RequiresBootstrap -> SyncStatus.RequiresBootstrap
+    is AppSyncStatus.Error -> SyncStatus.Error(message)
 }

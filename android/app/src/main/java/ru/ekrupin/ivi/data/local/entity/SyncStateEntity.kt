@@ -12,4 +12,7 @@ data class SyncStateEntity(
     val lastChangesAt: LocalDateTime?,
     val lastSuccessfulReadAt: LocalDateTime?,
     val requiresBootstrap: Boolean,
+    val configuredBaseUrl: String?,
+    val configuredAccessToken: String?,
+    val lastForegroundSyncStartedAt: LocalDateTime?,
 )
