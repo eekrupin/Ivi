@@ -15,7 +15,7 @@ class AppSyncRunnerTest {
         val useCase = FakeRunFullSyncUseCase()
         val stateStore = FakeRunnerSyncStateStore()
         val configStore = FakeSyncConfigStore()
-        val runner = AppSyncRunner(useCase, stateStore, configStore)
+        val runner = AppSyncRunner(useCase, stateStore, configStore, SyncExecutionGate())
 
         runner.triggerForegroundSync()
         delay(100)
@@ -39,7 +39,7 @@ class AppSyncRunnerTest {
             ),
         )
         val configStore = FakeSyncConfigStore(SyncConfig("http://localhost:8080", "token"))
-        val runner = AppSyncRunner(useCase, stateStore, configStore)
+        val runner = AppSyncRunner(useCase, stateStore, configStore, SyncExecutionGate())
 
         runner.triggerForegroundSync()
         delay(100)
@@ -64,7 +64,7 @@ class AppSyncRunnerTest {
             ),
         )
         val configStore = FakeSyncConfigStore(SyncConfig("http://localhost:8080", "token"))
-        val runner = AppSyncRunner(useCase, stateStore, configStore)
+        val runner = AppSyncRunner(useCase, stateStore, configStore, SyncExecutionGate())
 
         runner.triggerForegroundSync()
         delay(100)
@@ -77,7 +77,7 @@ class AppSyncRunnerTest {
         val useCase = FakeRunFullSyncUseCase()
         val stateStore = FakeRunnerSyncStateStore()
         val configStore = FakeSyncConfigStore()
-        val runner = AppSyncRunner(useCase, stateStore, configStore)
+        val runner = AppSyncRunner(useCase, stateStore, configStore, SyncExecutionGate())
 
         runner.triggerManualSync("http://localhost:8080", "token")
         delay(100)

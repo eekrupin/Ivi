@@ -89,10 +89,11 @@
 - В приложении уже появился ручной app-level entrypoint sync V1 через экран настроек: полный flow связывает bootstrap / push / changes и показывает минимальный sync-статус
 - В приложении уже появился foreground lifecycle-trigger sync V1: `MainActivity.onStart()` вызывает app-level runner поверх `RunFullSyncUseCase` с защитами от параллельных и слишком частых запусков
 - sync-конфигурация клиента теперь хранится отдельно от operational sync state: `baseUrl` и `accessToken` вынесены в отдельный DataStore-backed config store, а `sync_state` оставлен для cursor/flags/runtime-состояния
+- В Android уже добавлен background sync foundation на WorkManager: периодический `SyncWorker` использует тот же `RunFullSyncUseCase`, что и ручной/foreground sync
 
 Что в работе:
 - подготовка простого серверного контура для двух пользователей и одного питомца
-- подготовка следующего клиентского этапа после нормализации session/config UX: background sync foundation и/или conflict UX
+- подготовка следующего клиентского этапа после WorkManager foundation: conflict UX и/или дальнейшее усиление background orchestration
 - подготовка `infra/` следующим этапом, уже без переноса Android и без переопределения API-контракта вручную
 - локальная клиентская полировка больше не является единственным фокусом этапа
 
@@ -974,6 +975,15 @@ UX разрешений на уведомления:
 - Ошибки foreground sync пока не показываются агрессивно пользователю: они отражаются только в текущем sync-статусе, без popup/snackbar-шума.
 - Текущий foreground-trigger работает только пока жива `MainActivity`; это сознательно не background sync и не замена будущей WorkManager/background orchestration модели.
 
+### Background sync foundation V1
+- На текущем шаге в Android добавлен один `SyncWorker` на базе WorkManager; worker использует уже существующий `RunFullSyncUseCase` и не содержит отдельной sync-логики.
+- Scheduling строится через `BackgroundSyncScheduler`, который при старте приложения регистрирует unique periodic work `ivi-background-sync` с policy `KEEP`.
+- Для V1 выбрана простая периодическая стратегия: один periodic worker с network constraint `CONNECTED`, без отдельного one-shot scheduling по запросу.
+- Background worker использует тот же `SyncConfigStore`, что и ручной и foreground sync; если sync не настроен, worker завершается `success` без шума.
+- Для предотвращения параллельных запусков foreground/manual/background sync используют общий `SyncExecutionGate`; если другой sync уже идет, worker тихо завершается `success`.
+- Для V1 worker трактует результаты так: `Success`, `ConflictsDetected`, `RequiresBootstrap`, `AuthError`, `ValidationError` -> `Result.success()`; `NetworkError`, `ServerError` c 5xx и `UnknownError` -> `Result.retry()`.
+- Background sync сейчас intentionally quiet: без пользовательских popup, без системных уведомлений, без conflict UI.
+
 ### D-023
 Статус: принято
 Решение:
@@ -1009,10 +1019,17 @@ UX разрешений на уведомления:
 Причина:
 - это разделяет session/config и operational sync state, убирает debug-only ощущение от настройки синхронизации и готовит более чистую основу для будущего background sync
 
+### D-028
+Статус: принято
+Решение:
+- background sync foundation строится на одном unique periodic `SyncWorker` через WorkManager, с network constraint и использованием общего `RunFullSyncUseCase` и `SyncExecutionGate`
+Причина:
+- это дает безопасный фоновый фундамент без дублирования sync-логики, без premature scheduler-сложности и без конфликтов с ручным/foreground sync
+
 ## План следующих шагов
-1. Следующим шагом подготовить background sync foundation: выбрать точку запуска, ограничения и минимальную orchestration-модель без полного production-grade scheduler.
-2. После этого развивать реальную клиент-серверную интеграцию sync уже не только в foreground/manual режиме, но и в более устойчивом сценарии использования.
-3. Затем уже итеративно усиливать retry, background sync и conflict-handling без пересборки базового контракта.
+1. Следующим шагом выбрать один из двух вариантов усиления UX вокруг уже готового sync foundation: conflict UI или более зрелый session/auth UX.
+2. После этого развивать реальную клиент-серверную интеграцию sync уже не только в foreground/manual/background foundation режиме, но и в более устойчивом пользовательском сценарии.
+3. Затем уже итеративно усиливать retry, background orchestration и conflict-handling без пересборки базового контракта.
 
 ## Практика работы в этом репозитории
 - Перед существенными решениями сначала смотри реальные файлы репозитория; сейчас тут мало кода, поэтому особенно важно не делать ложных выводов о якобы существующей структуре.
