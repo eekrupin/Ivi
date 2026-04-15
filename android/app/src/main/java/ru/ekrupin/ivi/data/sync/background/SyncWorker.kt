@@ -6,25 +6,20 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import ru.ekrupin.ivi.data.sync.FullSyncRunner
 import ru.ekrupin.ivi.data.sync.SyncExecutionGate
 import ru.ekrupin.ivi.data.sync.SyncRunResult
-import ru.ekrupin.ivi.data.sync.config.SyncConfigStore
+import ru.ekrupin.ivi.data.sync.AuthorizedSyncRunner
 
 @HiltWorker
 class SyncWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
-    private val fullSyncRunner: FullSyncRunner,
-    private val syncConfigStore: SyncConfigStore,
+    private val authorizedSyncRunner: AuthorizedSyncRunner,
     private val syncExecutionGate: SyncExecutionGate,
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
-        val config = syncConfigStore.get()
-        if (!config.isConfigured) return Result.success()
-
         val syncResult = syncExecutionGate.runOrSkip {
-            fullSyncRunner.run(config.baseUrl, config.accessToken)
+            authorizedSyncRunner.runWithSession()
         } ?: return Result.success()
 
         return when (syncResult) {

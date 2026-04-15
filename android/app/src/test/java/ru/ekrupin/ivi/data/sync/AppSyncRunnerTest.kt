@@ -6,16 +6,23 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
-import ru.ekrupin.ivi.data.sync.config.SyncConfig
-import ru.ekrupin.ivi.data.sync.config.SyncConfigStore
+import ru.ekrupin.ivi.data.auth.remote.AuthRemoteDataSource
+import ru.ekrupin.ivi.data.auth.remote.RemoteAuthResult
+import ru.ekrupin.ivi.data.auth.remote.RemoteAuthTokens
+import ru.ekrupin.ivi.data.auth.remote.RemoteAuthUser
+import ru.ekrupin.ivi.data.auth.remote.RemoteMeResult
+import ru.ekrupin.ivi.data.auth.session.AuthSessionManager
+import ru.ekrupin.ivi.data.sync.config.SyncSession
+import ru.ekrupin.ivi.data.sync.config.SyncSessionStore
 
 class AppSyncRunnerTest {
     @Test
     fun foregroundSync_doesNotRunWithoutConfig() = runBlocking {
         val useCase = FakeRunFullSyncUseCase()
         val stateStore = FakeRunnerSyncStateStore()
-        val configStore = FakeSyncConfigStore()
-        val runner = AppSyncRunner(useCase, stateStore, configStore, SyncExecutionGate())
+        val sessionStore = FakeSyncSessionStore()
+        val authManager = AuthSessionManager(FakeAuthRemoteDataSource(), sessionStore)
+        val runner = AppSyncRunner(AuthorizedSyncRunner(useCase, authManager), stateStore, authManager, SyncExecutionGate())
 
         runner.triggerForegroundSync()
         delay(100)
@@ -38,8 +45,18 @@ class AppSyncRunnerTest {
                 lastForegroundSyncStartedAt = null,
             ),
         )
-        val configStore = FakeSyncConfigStore(SyncConfig("http://localhost:8080", "token"))
-        val runner = AppSyncRunner(useCase, stateStore, configStore, SyncExecutionGate())
+        val sessionStore = FakeSyncSessionStore(
+            SyncSession(
+                baseUrl = "http://localhost:8080",
+                accessToken = "token",
+                refreshToken = "refresh",
+                userId = "1",
+                email = "user@example.com",
+                displayName = "User",
+            ),
+        )
+        val authManager = AuthSessionManager(FakeAuthRemoteDataSource(), sessionStore)
+        val runner = AppSyncRunner(AuthorizedSyncRunner(useCase, authManager), stateStore, authManager, SyncExecutionGate())
 
         runner.triggerForegroundSync()
         delay(100)
@@ -63,8 +80,18 @@ class AppSyncRunnerTest {
                 lastForegroundSyncStartedAt = LocalDateTime.now(),
             ),
         )
-        val configStore = FakeSyncConfigStore(SyncConfig("http://localhost:8080", "token"))
-        val runner = AppSyncRunner(useCase, stateStore, configStore, SyncExecutionGate())
+        val sessionStore = FakeSyncSessionStore(
+            SyncSession(
+                baseUrl = "http://localhost:8080",
+                accessToken = "token",
+                refreshToken = "refresh",
+                userId = "1",
+                email = "user@example.com",
+                displayName = "User",
+            ),
+        )
+        val authManager = AuthSessionManager(FakeAuthRemoteDataSource(), sessionStore)
+        val runner = AppSyncRunner(AuthorizedSyncRunner(useCase, authManager), stateStore, authManager, SyncExecutionGate())
 
         runner.triggerForegroundSync()
         delay(100)
@@ -73,38 +100,78 @@ class AppSyncRunnerTest {
     }
 
     @Test
-    fun manualSync_savesConfig_andRunsImmediately() = runBlocking {
+    fun manualSync_runsImmediatelyWhenSessionExists() = runBlocking {
         val useCase = FakeRunFullSyncUseCase()
         val stateStore = FakeRunnerSyncStateStore()
-        val configStore = FakeSyncConfigStore()
-        val runner = AppSyncRunner(useCase, stateStore, configStore, SyncExecutionGate())
+        val sessionStore = FakeSyncSessionStore(
+            SyncSession(
+                baseUrl = "http://localhost:8080",
+                accessToken = "token",
+                refreshToken = "refresh",
+                userId = "1",
+                email = "user@example.com",
+                displayName = "User",
+            ),
+        )
+        val authManager = AuthSessionManager(FakeAuthRemoteDataSource(), sessionStore)
+        val runner = AppSyncRunner(AuthorizedSyncRunner(useCase, authManager), stateStore, authManager, SyncExecutionGate())
 
-        runner.triggerManualSync("http://localhost:8080", "token")
+        runner.triggerManualSync()
         delay(100)
 
         assertEquals(1, useCase.calls)
-        assertEquals("http://localhost:8080", configStore.current.baseUrl)
-        assertEquals("token", configStore.current.accessToken)
+        assertTrue(runner.status.value is AppSyncStatus.Success)
     }
 }
 
-private class FakeSyncConfigStore(
-    initial: SyncConfig = SyncConfig(baseUrl = "", accessToken = ""),
-) : SyncConfigStore {
-    var current: SyncConfig = initial
-    override val config = kotlinx.coroutines.flow.MutableStateFlow(initial)
+private class FakeSyncSessionStore(
+    initial: SyncSession = SyncSession("", "", "", null, null, null),
+) : SyncSessionStore {
+    var current: SyncSession = initial
+    override val session = kotlinx.coroutines.flow.MutableStateFlow(initial)
 
-    override suspend fun get(): SyncConfig = current
+    override suspend fun get(): SyncSession = current
 
-    override suspend fun save(baseUrl: String, accessToken: String) {
-        current = SyncConfig(baseUrl, accessToken)
-        config.value = current
+    override suspend fun saveAuthorizedSession(
+        baseUrl: String,
+        accessToken: String,
+        refreshToken: String,
+        userId: String?,
+        email: String?,
+        displayName: String?,
+    ) {
+        current = SyncSession(baseUrl, accessToken, refreshToken, userId, email, displayName)
+        session.value = current
+    }
+
+    override suspend fun updateBaseUrl(baseUrl: String) {
+        current = current.copy(baseUrl = baseUrl)
+        session.value = current
+    }
+
+    override suspend fun updateTokens(accessToken: String, refreshToken: String) {
+        current = current.copy(accessToken = accessToken, refreshToken = refreshToken)
+        session.value = current
     }
 
     override suspend fun clear() {
-        current = SyncConfig("", "")
-        config.value = current
+        current = SyncSession("", "", "", null, null, null)
+        session.value = current
     }
+}
+
+private class FakeAuthRemoteDataSource : AuthRemoteDataSource {
+    override suspend fun register(baseUrl: String, email: String, password: String, displayName: String): RemoteAuthResult =
+        RemoteAuthResult(RemoteAuthUser("1", email, displayName), RemoteAuthTokens("token", "refresh"))
+
+    override suspend fun login(baseUrl: String, email: String, password: String): RemoteAuthResult =
+        RemoteAuthResult(RemoteAuthUser("1", email, "User"), RemoteAuthTokens("token", "refresh"))
+
+    override suspend fun refresh(baseUrl: String, refreshToken: String): RemoteAuthResult =
+        RemoteAuthResult(RemoteAuthUser("1", "user@example.com", "User"), RemoteAuthTokens("token", "refresh"))
+
+    override suspend fun me(baseUrl: String, accessToken: String): RemoteMeResult =
+        RemoteMeResult(RemoteAuthUser("1", "user@example.com", "User"))
 }
 
 private class FakeRunFullSyncUseCase : FullSyncRunner {
@@ -147,7 +214,7 @@ private class FakeRunnerSyncStateStore(
     }
 
     override suspend fun saveSyncConfig(baseUrl: String, accessToken: String) {
-        state = state.copy(configuredBaseUrl = baseUrl, configuredAccessToken = accessToken)
+        Unit
     }
 
     override suspend fun markForegroundSyncStarted(timestamp: LocalDateTime) {

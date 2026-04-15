@@ -11,13 +11,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import ru.ekrupin.ivi.data.sync.config.SyncConfigStore
+import ru.ekrupin.ivi.data.auth.session.AuthSessionManager
 
 @Singleton
 class AppSyncRunner @Inject constructor(
-    private val fullSyncRunner: FullSyncRunner,
+    private val authorizedSyncRunner: AuthorizedSyncRunner,
     private val syncStateStore: SyncStateStore,
-    private val syncConfigStore: SyncConfigStore,
+    private val authSessionManager: AuthSessionManager,
     private val syncExecutionGate: SyncExecutionGate,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -29,8 +29,8 @@ class AppSyncRunner @Inject constructor(
         scope.launch {
             syncExecutionGate.runOrSkip {
                 val state = syncStateStore.get()
-                val config = syncConfigStore.get()
-                if (!config.isConfigured) return@runOrSkip
+                val session = authSessionManager.getSession()
+                if (!session.isAuthenticated) return@runOrSkip
 
                 val now = LocalDateTime.now()
                 val lastStart = state.lastForegroundSyncStartedAt
@@ -40,17 +40,16 @@ class AppSyncRunner @Inject constructor(
 
                 syncStateStore.markForegroundSyncStarted(now)
                 _status.value = AppSyncStatus.Running(AppSyncTrigger.Foreground)
-                _status.value = fullSyncRunner.run(config.baseUrl, config.accessToken).toAppStatus(AppSyncTrigger.Foreground)
+                _status.value = authorizedSyncRunner.runWithSession().toAppStatus(AppSyncTrigger.Foreground)
             }
         }
     }
 
-    fun triggerManualSync(baseUrl: String, accessToken: String) {
+    fun triggerManualSync() {
         scope.launch {
             syncExecutionGate.runOrSkip {
-                syncConfigStore.save(baseUrl.trim(), accessToken.trim())
                 _status.value = AppSyncStatus.Running(AppSyncTrigger.Manual)
-                _status.value = fullSyncRunner.run(baseUrl.trim(), accessToken.trim()).toAppStatus(AppSyncTrigger.Manual)
+                _status.value = authorizedSyncRunner.runWithSession().toAppStatus(AppSyncTrigger.Manual)
             }
         }
     }

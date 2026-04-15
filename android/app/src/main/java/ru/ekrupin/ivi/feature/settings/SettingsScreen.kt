@@ -207,14 +207,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     text = stringResource(R.string.settings_sync_description),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                Text(
-                    text = if (syncUiState.isConfigured) {
-                        stringResource(R.string.settings_sync_configured, syncUiState.configuredBaseUrl ?: syncUiState.baseUrl)
-                    } else {
-                        stringResource(R.string.settings_sync_not_configured)
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                )
                 OutlinedTextField(
                     value = syncUiState.baseUrl,
                     onValueChange = viewModel::updateSyncBaseUrl,
@@ -222,13 +214,66 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
-                OutlinedTextField(
-                    value = syncUiState.accessToken,
-                    onValueChange = viewModel::updateSyncAccessToken,
-                    label = { Text(stringResource(R.string.settings_sync_access_token)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
+                when (val connection = syncUiState.connectionStatus) {
+                    ConnectionStatus.NotConfigured -> {
+                        Text(
+                            text = stringResource(R.string.settings_sync_not_configured),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    is ConnectionStatus.NotConnected -> {
+                        Text(
+                            text = stringResource(R.string.settings_sync_not_connected, connection.backendUrl),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    ConnectionStatus.Loading -> {
+                        Text(
+                            text = stringResource(R.string.settings_sync_connecting),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    is ConnectionStatus.Connected -> {
+                        Text(
+                            text = stringResource(
+                                R.string.settings_sync_connected,
+                                connection.displayName ?: connection.email,
+                                connection.backendUrl,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    is ConnectionStatus.Error -> {
+                        Text(
+                            text = connection.message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+                if (!syncUiState.isConnected) {
+                    OutlinedTextField(
+                        value = syncUiState.email,
+                        onValueChange = viewModel::updateEmail,
+                        label = { Text(stringResource(R.string.settings_sync_email)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = syncUiState.displayName,
+                        onValueChange = viewModel::updateDisplayName,
+                        label = { Text(stringResource(R.string.settings_sync_display_name)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = syncUiState.password,
+                        onValueChange = viewModel::updatePassword,
+                        label = { Text(stringResource(R.string.settings_sync_password)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
                 Text(
                     text = syncUiState.status.label(context),
                     style = MaterialTheme.typography.bodyMedium,
@@ -242,23 +287,32 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                         else -> MaterialTheme.colorScheme.onSurface
                     },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FilledTonalButton(
-                        onClick = viewModel::saveSyncConfig,
-                        enabled = syncUiState.baseUrl.isNotBlank() && syncUiState.accessToken.isNotBlank() && syncUiState.status != SyncStatus.Running,
-                    ) {
-                        Text(stringResource(R.string.settings_sync_save_config))
+                if (!syncUiState.isConnected) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        FilledTonalButton(
+                            onClick = viewModel::login,
+                            enabled = syncUiState.baseUrl.isNotBlank() && syncUiState.email.isNotBlank() && syncUiState.password.isNotBlank() && syncUiState.status != SyncStatus.Running,
+                        ) {
+                            Text(stringResource(R.string.settings_sync_login))
+                        }
+                        OutlinedButton(
+                            onClick = viewModel::register,
+                            enabled = syncUiState.baseUrl.isNotBlank() && syncUiState.email.isNotBlank() && syncUiState.password.isNotBlank() && syncUiState.displayName.isNotBlank() && syncUiState.status != SyncStatus.Running,
+                        ) {
+                            Text(stringResource(R.string.settings_sync_register))
+                        }
                     }
+                } else {
                     OutlinedButton(
-                        onClick = viewModel::clearSyncConfig,
-                        enabled = syncUiState.isConfigured && syncUiState.status != SyncStatus.Running,
+                        onClick = viewModel::logout,
+                        enabled = syncUiState.status != SyncStatus.Running,
                     ) {
-                        Text(stringResource(R.string.settings_sync_clear_config))
+                        Text(stringResource(R.string.settings_sync_logout))
                     }
                 }
                 FilledTonalButton(
                     onClick = viewModel::runSync,
-                    enabled = syncUiState.baseUrl.isNotBlank() && syncUiState.accessToken.isNotBlank() && syncUiState.status != SyncStatus.Running,
+                    enabled = syncUiState.isConnected && syncUiState.status != SyncStatus.Running,
                 ) {
                     Text(
                         text = if (syncUiState.status == SyncStatus.Running) {

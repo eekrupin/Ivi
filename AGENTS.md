@@ -88,7 +88,7 @@
 - Android-клиент уже получил первый client-side sync push foundation: drain `sync_outbox` через `POST /v1/sync/push` с обработкой `accepted`, `conflicts` и `requiresBootstrap`
 - В приложении уже появился ручной app-level entrypoint sync V1 через экран настроек: полный flow связывает bootstrap / push / changes и показывает минимальный sync-статус
 - В приложении уже появился foreground lifecycle-trigger sync V1: `MainActivity.onStart()` вызывает app-level runner поверх `RunFullSyncUseCase` с защитами от параллельных и слишком частых запусков
-- sync-конфигурация клиента теперь хранится отдельно от operational sync state: `baseUrl` и `accessToken` вынесены в отдельный DataStore-backed config store, а `sync_state` оставлен для cursor/flags/runtime-состояния
+- client-side session/auth UX уже выведен из debug-only режима: backend URL, access token, refresh token и профиль пользователя теперь хранятся в отдельном DataStore-backed session store и используются foreground/manual/background sync
 - В Android уже добавлен background sync foundation на WorkManager: периодический `SyncWorker` использует тот же `RunFullSyncUseCase`, что и ручной/foreground sync
 
 Что в работе:
@@ -959,18 +959,19 @@ UX разрешений на уведомления:
 - Session/config модель теперь отделена от operational sync state: конфигурация sync хранится в отдельном DataStore-backed `SyncConfigStore`, а `sync_state` используется только для cursor, флагов и runtime-состояния sync.
 
 ### Session/config UX V1
-- Для V1 выбран один источник конфигурации sync-клиента: `SyncConfigStore` на основе Android DataStore Preferences.
-- В `SyncConfigStore` хранятся только `baseUrl` и `accessToken`; этого достаточно для текущего ручного и foreground sync.
-- При первом чтении `SyncConfigStore` выполняет одноразовую мягкую миграцию legacy-конфигурации из `sync_state`, если она там еще есть, после чего runner и UI читают уже только DataStore.
-- `AppSyncRunner` и ручной запуск в настройках используют один и тот же `SyncConfigStore`; прямой зависимости на хранение конфигурации в `sync_state` больше нет.
-- Экран настроек теперь показывает, настроена синхронизация или нет, отображает текущий backend URL, позволяет сохранить конфигурацию и полностью сбросить её.
-- После сброса конфигурации foreground sync корректно молчит: auto-trigger не запускается, пока `baseUrl` и `accessToken` не будут сохранены заново.
-- Текущее V1-решение сознательно не является полноценным auth/session UX: access token хранится локально как часть sync-конфигурации, без отдельного login flow и без background hardening.
+- Для V1 выбран один источник client-side session/config: `SyncSessionStore` на основе Android DataStore Preferences.
+- В `SyncSessionStore` хранятся `baseUrl`, `accessToken`, `refreshToken`, а также минимальный профиль пользователя (`userId`, `email`, `displayName`).
+- При первом чтении `SyncSessionStore` выполняет одноразовую мягкую миграцию legacy-конфигурации из `sync_state`, если она там еще есть, после чего foreground/manual/background sync читают уже только session store.
+- `AppSyncRunner`, `SyncWorker` и ручной запуск в настройках используют один и тот же `SyncSessionStore`; прямой зависимости на хранение session/config в `sync_state` больше нет.
+- Экран настроек теперь выступает как минимальный экран подключения: пользователь вводит backend URL, email, пароль и может войти или зарегистрироваться через уже существующий backend auth.
+- После успешного login/register локальная сессия сохраняется в `SyncSessionStore`, и foreground/manual/background sync начинают использовать её автоматически.
+- Logout/reset connection очищает session store целиком; после этого foreground и background sync корректно молчат, пока пользователь не войдет заново.
+- Текущее V1-решение сознательно не является полным production-grade auth UX: отдельного экрана логина нет, refresh выполняется скрыто для sync, а более богатый session UX и polishing откладываются на следующий этап.
 
 ### Foreground sync trigger V1
 - На текущем шаге автоматический foreground-trigger привязан к `MainActivity.onStart()`: при старте приложения и каждом возврате activity в foreground вызывается `AppSyncRunner.triggerForegroundSync()`.
 - Foreground-trigger не содержит собственной sync-логики и использует уже существующий `RunFullSyncUseCase` через общий app-level runner.
-- Для V1 добавлены простые защитные правила: если sync уже выполняется, новый запуск не стартует; если `baseUrl` или `accessToken` не сохранены, auto-sync не запускается; если предыдущий foreground sync стартовал менее 30 секунд назад, новый запуск пропускается.
+- Для V1 добавлены простые защитные правила: если sync уже выполняется, новый запуск не стартует; если backend session не сохранена, auto-sync не запускается; если предыдущий foreground sync стартовал менее 30 секунд назад, новый запуск пропускается.
 - Foreground-trigger обновляет тот же app-level sync status, что и ручной запуск, поэтому текущее состояние можно увидеть в экране настроек без отдельного UI.
 - Ошибки foreground sync пока не показываются агрессивно пользователю: они отражаются только в текущем sync-статусе, без popup/snackbar-шума.
 - Текущий foreground-trigger работает только пока жива `MainActivity`; это сознательно не background sync и не замена будущей WorkManager/background orchestration модели.
@@ -979,7 +980,7 @@ UX разрешений на уведомления:
 - На текущем шаге в Android добавлен один `SyncWorker` на базе WorkManager; worker использует уже существующий `RunFullSyncUseCase` и не содержит отдельной sync-логики.
 - Scheduling строится через `BackgroundSyncScheduler`, который при старте приложения регистрирует unique periodic work `ivi-background-sync` с policy `KEEP`.
 - Для V1 выбрана простая периодическая стратегия: один periodic worker с network constraint `CONNECTED`, без отдельного one-shot scheduling по запросу.
-- Background worker использует тот же `SyncConfigStore`, что и ручной и foreground sync; если sync не настроен, worker завершается `success` без шума.
+- Background worker использует тот же `SyncSessionStore`, что и ручной и foreground sync; если sync не настроен или пользователь не вошел, worker завершается `success` без шума.
 - Для предотвращения параллельных запусков foreground/manual/background sync используют общий `SyncExecutionGate`; если другой sync уже идет, worker тихо завершается `success`.
 - Для V1 worker трактует результаты так: `Success`, `ConflictsDetected`, `RequiresBootstrap`, `AuthError`, `ValidationError` -> `Result.success()`; `NetworkError`, `ServerError` c 5xx и `UnknownError` -> `Result.retry()`.
 - Background sync сейчас intentionally quiet: без пользовательских popup, без системных уведомлений, без conflict UI.
@@ -1026,8 +1027,15 @@ UX разрешений на уведомления:
 Причина:
 - это дает безопасный фоновый фундамент без дублирования sync-логики, без premature scheduler-сложности и без конфликтов с ручным/foreground sync
 
+### D-029
+Статус: принято
+Решение:
+- client-side auth/session V1 строится вокруг `email + password`, backend auth endpoint-ов `register/login/refresh/me` и одного DataStore-backed `SyncSessionStore`, который хранит backend URL, токены и минимальный профиль пользователя
+Причина:
+- это переводит sync из debug-only режима в реальный пользовательский сценарий подключения к backend, не ломая уже готовый sync foundation
+
 ## План следующих шагов
-1. Следующим шагом выбрать один из двух вариантов усиления UX вокруг уже готового sync foundation: conflict UI или более зрелый session/auth UX.
+1. Следующим шагом выбрать один из двух вариантов усиления UX вокруг уже готового sync foundation: conflict UI или polish auth/session UX.
 2. После этого развивать реальную клиент-серверную интеграцию sync уже не только в foreground/manual/background foundation режиме, но и в более устойчивом пользовательском сценарии.
 3. Затем уже итеративно усиливать retry, background orchestration и conflict-handling без пересборки базового контракта.
 

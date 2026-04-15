@@ -8,8 +8,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import okhttp3.OkHttpClient
-import ru.ekrupin.ivi.data.sync.config.DataStoreSyncConfigStore
-import ru.ekrupin.ivi.data.sync.config.SyncConfigStore
+import ru.ekrupin.ivi.data.auth.remote.AuthRemoteDataSource
+import ru.ekrupin.ivi.data.auth.remote.OkHttpAuthRemoteDataSource
+import ru.ekrupin.ivi.data.sync.config.DataStoreSyncSessionStore
+import ru.ekrupin.ivi.data.sync.config.SyncSessionStore
 import ru.ekrupin.ivi.data.sync.RoomSyncPushApplier
 import ru.ekrupin.ivi.data.sync.RoomSyncSnapshotStore
 import ru.ekrupin.ivi.data.sync.RoomSyncStateStore
@@ -44,10 +46,14 @@ object SyncModule {
     fun provideSyncPushApplier(applier: RoomSyncPushApplier): SyncPushApplier = applier
 
     @Provides
-    fun provideSyncConfigStore(
+    fun provideSyncSessionStore(
         @ApplicationContext context: Context,
         syncStateStore: SyncStateStore,
-    ): SyncConfigStore = DataStoreSyncConfigStore(context, syncStateStore)
+    ): SyncSessionStore = DataStoreSyncSessionStore(context, syncStateStore)
+
+    @Provides
+    fun provideAuthRemoteDataSource(okHttpClient: OkHttpClient): AuthRemoteDataSource =
+        OkHttpAuthRemoteDataSource(okHttpClient)
 
     @Provides
     fun provideSyncEngine(coordinator: SyncCoordinator): SyncEngine = coordinator
