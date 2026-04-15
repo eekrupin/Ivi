@@ -1,19 +1,21 @@
 package ru.ekrupin.ivi.data.sync
 
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
+import ru.ekrupin.ivi.data.sync.config.SyncConfig
+import ru.ekrupin.ivi.data.sync.config.SyncConfigStore
 
 class AppSyncRunnerTest {
     @Test
     fun foregroundSync_doesNotRunWithoutConfig() = runBlocking {
         val useCase = FakeRunFullSyncUseCase()
         val stateStore = FakeRunnerSyncStateStore()
-        val runner = AppSyncRunner(useCase, stateStore)
+        val configStore = FakeSyncConfigStore()
+        val runner = AppSyncRunner(useCase, stateStore, configStore)
 
         runner.triggerForegroundSync()
         delay(100)
@@ -31,12 +33,13 @@ class AppSyncRunnerTest {
                 lastChangesAt = null,
                 lastSuccessfulReadAt = null,
                 requiresBootstrap = false,
-                configuredBaseUrl = "http://localhost:8080",
-                configuredAccessToken = "token",
+                configuredBaseUrl = null,
+                configuredAccessToken = null,
                 lastForegroundSyncStartedAt = null,
             ),
         )
-        val runner = AppSyncRunner(useCase, stateStore)
+        val configStore = FakeSyncConfigStore(SyncConfig("http://localhost:8080", "token"))
+        val runner = AppSyncRunner(useCase, stateStore, configStore)
 
         runner.triggerForegroundSync()
         delay(100)
@@ -55,12 +58,13 @@ class AppSyncRunnerTest {
                 lastChangesAt = null,
                 lastSuccessfulReadAt = null,
                 requiresBootstrap = false,
-                configuredBaseUrl = "http://localhost:8080",
-                configuredAccessToken = "token",
+                configuredBaseUrl = null,
+                configuredAccessToken = null,
                 lastForegroundSyncStartedAt = LocalDateTime.now(),
             ),
         )
-        val runner = AppSyncRunner(useCase, stateStore)
+        val configStore = FakeSyncConfigStore(SyncConfig("http://localhost:8080", "token"))
+        val runner = AppSyncRunner(useCase, stateStore, configStore)
 
         runner.triggerForegroundSync()
         delay(100)
@@ -72,14 +76,34 @@ class AppSyncRunnerTest {
     fun manualSync_savesConfig_andRunsImmediately() = runBlocking {
         val useCase = FakeRunFullSyncUseCase()
         val stateStore = FakeRunnerSyncStateStore()
-        val runner = AppSyncRunner(useCase, stateStore)
+        val configStore = FakeSyncConfigStore()
+        val runner = AppSyncRunner(useCase, stateStore, configStore)
 
         runner.triggerManualSync("http://localhost:8080", "token")
         delay(100)
 
         assertEquals(1, useCase.calls)
-        assertEquals("http://localhost:8080", stateStore.state.configuredBaseUrl)
-        assertEquals("token", stateStore.state.configuredAccessToken)
+        assertEquals("http://localhost:8080", configStore.current.baseUrl)
+        assertEquals("token", configStore.current.accessToken)
+    }
+}
+
+private class FakeSyncConfigStore(
+    initial: SyncConfig = SyncConfig(baseUrl = "", accessToken = ""),
+) : SyncConfigStore {
+    var current: SyncConfig = initial
+    override val config = kotlinx.coroutines.flow.MutableStateFlow(initial)
+
+    override suspend fun get(): SyncConfig = current
+
+    override suspend fun save(baseUrl: String, accessToken: String) {
+        current = SyncConfig(baseUrl, accessToken)
+        config.value = current
+    }
+
+    override suspend fun clear() {
+        current = SyncConfig("", "")
+        config.value = current
     }
 }
 

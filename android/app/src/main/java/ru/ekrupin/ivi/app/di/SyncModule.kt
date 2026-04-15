@@ -1,11 +1,15 @@
 package ru.ekrupin.ivi.app.di
 
+import android.content.Context
 import dagger.Module
 import dagger.Provides
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import okhttp3.OkHttpClient
+import ru.ekrupin.ivi.data.sync.config.DataStoreSyncConfigStore
+import ru.ekrupin.ivi.data.sync.config.SyncConfigStore
 import ru.ekrupin.ivi.data.sync.RoomSyncPushApplier
 import ru.ekrupin.ivi.data.sync.RoomSyncSnapshotStore
 import ru.ekrupin.ivi.data.sync.RoomSyncStateStore
@@ -38,6 +42,12 @@ object SyncModule {
 
     @Provides
     fun provideSyncPushApplier(applier: RoomSyncPushApplier): SyncPushApplier = applier
+
+    @Provides
+    fun provideSyncConfigStore(
+        @ApplicationContext context: Context,
+        syncStateStore: SyncStateStore,
+    ): SyncConfigStore = DataStoreSyncConfigStore(context, syncStateStore)
 
     @Provides
     fun provideSyncEngine(coordinator: SyncCoordinator): SyncEngine = coordinator

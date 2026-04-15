@@ -207,6 +207,14 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     text = stringResource(R.string.settings_sync_description),
                     style = MaterialTheme.typography.bodySmall,
                 )
+                Text(
+                    text = if (syncUiState.isConfigured) {
+                        stringResource(R.string.settings_sync_configured, syncUiState.configuredBaseUrl ?: syncUiState.baseUrl)
+                    } else {
+                        stringResource(R.string.settings_sync_not_configured)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
                 OutlinedTextField(
                     value = syncUiState.baseUrl,
                     onValueChange = viewModel::updateSyncBaseUrl,
@@ -225,6 +233,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     text = syncUiState.status.label(context),
                     style = MaterialTheme.typography.bodyMedium,
                     color = when (syncUiState.status) {
+                        SyncStatus.NotConfigured -> MaterialTheme.colorScheme.onSurfaceVariant
                         SyncStatus.Success -> MaterialTheme.colorScheme.primary
                         SyncStatus.ForegroundSuccess -> MaterialTheme.colorScheme.primary
                         SyncStatus.Conflicts -> MaterialTheme.colorScheme.tertiary
@@ -233,9 +242,23 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                         else -> MaterialTheme.colorScheme.onSurface
                     },
                 )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FilledTonalButton(
+                        onClick = viewModel::saveSyncConfig,
+                        enabled = syncUiState.baseUrl.isNotBlank() && syncUiState.accessToken.isNotBlank() && syncUiState.status != SyncStatus.Running,
+                    ) {
+                        Text(stringResource(R.string.settings_sync_save_config))
+                    }
+                    OutlinedButton(
+                        onClick = viewModel::clearSyncConfig,
+                        enabled = syncUiState.isConfigured && syncUiState.status != SyncStatus.Running,
+                    ) {
+                        Text(stringResource(R.string.settings_sync_clear_config))
+                    }
+                }
                 FilledTonalButton(
                     onClick = viewModel::runSync,
-                    enabled = syncUiState.status != SyncStatus.Running,
+                    enabled = syncUiState.baseUrl.isNotBlank() && syncUiState.accessToken.isNotBlank() && syncUiState.status != SyncStatus.Running,
                 ) {
                     Text(
                         text = if (syncUiState.status == SyncStatus.Running) {
@@ -306,6 +329,7 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
 
 @Composable
 private fun SyncStatus.label(context: Context): String = when (this) {
+    SyncStatus.NotConfigured -> context.getString(R.string.settings_sync_not_configured)
     SyncStatus.Idle -> context.getString(R.string.settings_sync_idle)
     SyncStatus.Running -> context.getString(R.string.settings_sync_running)
     SyncStatus.Success -> context.getString(R.string.settings_sync_success)

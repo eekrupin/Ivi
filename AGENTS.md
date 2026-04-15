@@ -88,10 +88,11 @@
 - Android-клиент уже получил первый client-side sync push foundation: drain `sync_outbox` через `POST /v1/sync/push` с обработкой `accepted`, `conflicts` и `requiresBootstrap`
 - В приложении уже появился ручной app-level entrypoint sync V1 через экран настроек: полный flow связывает bootstrap / push / changes и показывает минимальный sync-статус
 - В приложении уже появился foreground lifecycle-trigger sync V1: `MainActivity.onStart()` вызывает app-level runner поверх `RunFullSyncUseCase` с защитами от параллельных и слишком частых запусков
+- sync-конфигурация клиента теперь хранится отдельно от operational sync state: `baseUrl` и `accessToken` вынесены в отдельный DataStore-backed config store, а `sync_state` оставлен для cursor/flags/runtime-состояния
 
 Что в работе:
 - подготовка простого серверного контура для двух пользователей и одного питомца
-- подготовка следующего клиентского этапа после foreground-trigger sync: background sync foundation и/или conflict UX
+- подготовка следующего клиентского этапа после нормализации session/config UX: background sync foundation и/или conflict UX
 - подготовка `infra/` следующим этапом, уже без переноса Android и без переопределения API-контракта вручную
 - локальная клиентская полировка больше не является единственным фокусом этапа
 
@@ -952,9 +953,18 @@ UX разрешений на уведомления:
 - Для V1 выбран простой app-level порядок: если `requiresBootstrap = true` или cursor отсутствует, то при пустом outbox выполняется `bootstrap`; если cursor уже есть, то при наличии pending outbox сначала выполняется `push`, затем `changes`.
 - Если нужен bootstrap, но outbox уже не пустой, orchestration не пытается автоматически merge-ить состояния и возвращает отдельный результат `RequiresBootstrap`.
 - Если `push` завершился конфликтами, общий sync cycle не считается полностью успешным: orchestration возвращает `ConflictsDetected`, но всё равно выполняет `changes` для выравнивания server-driven состояния.
-- Ручной запуск sync сейчас доступен из экрана настроек: пользователь вводит base URL и access token и нажимает кнопку ручной синхронизации.
-- На уровне приложения пока показываются только минимальные статусы: `Running`, `Success`, `Conflicts`, `RequiresBootstrap`, `Error`.
-- Текущая ручная интеграция сознательно debug/manual-friendly: конфигурация сервера и access token пока не сохраняются как полноценная auth/session модель приложения.
+- Ручной запуск sync сейчас доступен из экрана настроек через секцию синхронизации: пользователь может сохранить конфигурацию backend, сбросить её и вручную запустить sync.
+- На уровне приложения пока показываются минимальные статусы: `NotConfigured`, `Running`, `Success`, `ForegroundSuccess`, `Conflicts`, `RequiresBootstrap`, `Error`.
+- Session/config модель теперь отделена от operational sync state: конфигурация sync хранится в отдельном DataStore-backed `SyncConfigStore`, а `sync_state` используется только для cursor, флагов и runtime-состояния sync.
+
+### Session/config UX V1
+- Для V1 выбран один источник конфигурации sync-клиента: `SyncConfigStore` на основе Android DataStore Preferences.
+- В `SyncConfigStore` хранятся только `baseUrl` и `accessToken`; этого достаточно для текущего ручного и foreground sync.
+- При первом чтении `SyncConfigStore` выполняет одноразовую мягкую миграцию legacy-конфигурации из `sync_state`, если она там еще есть, после чего runner и UI читают уже только DataStore.
+- `AppSyncRunner` и ручной запуск в настройках используют один и тот же `SyncConfigStore`; прямой зависимости на хранение конфигурации в `sync_state` больше нет.
+- Экран настроек теперь показывает, настроена синхронизация или нет, отображает текущий backend URL, позволяет сохранить конфигурацию и полностью сбросить её.
+- После сброса конфигурации foreground sync корректно молчит: auto-trigger не запускается, пока `baseUrl` и `accessToken` не будут сохранены заново.
+- Текущее V1-решение сознательно не является полноценным auth/session UX: access token хранится локально как часть sync-конфигурации, без отдельного login flow и без background hardening.
 
 ### Foreground sync trigger V1
 - На текущем шаге автоматический foreground-trigger привязан к `MainActivity.onStart()`: при старте приложения и каждом возврате activity в foreground вызывается `AppSyncRunner.triggerForegroundSync()`.
@@ -992,8 +1002,15 @@ UX разрешений на уведомления:
 Причина:
 - это дает более естественный app-level запуск sync без premature background sync, WorkManager и сложной оркестрации жизненного цикла
 
+### D-027
+Статус: принято
+Решение:
+- sync-конфигурация клиента (`baseUrl`, `accessToken`) выносится из `sync_state` в отдельный DataStore-backed `SyncConfigStore`, который используется и ручным запуском, и foreground-trigger
+Причина:
+- это разделяет session/config и operational sync state, убирает debug-only ощущение от настройки синхронизации и готовит более чистую основу для будущего background sync
+
 ## План следующих шагов
-1. Следующим шагом выбрать один из двух вариантов усиления sync-интеграции: background sync foundation или conflict UX.
+1. Следующим шагом подготовить background sync foundation: выбрать точку запуска, ограничения и минимальную orchestration-модель без полного production-grade scheduler.
 2. После этого развивать реальную клиент-серверную интеграцию sync уже не только в foreground/manual режиме, но и в более устойчивом сценарии использования.
 3. Затем уже итеративно усиливать retry, background sync и conflict-handling без пересборки базового контракта.
 

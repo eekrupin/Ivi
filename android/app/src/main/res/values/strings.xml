@@ -119,9 +119,13 @@
     <string name="settings_permission_denied">Можно продолжать пользоваться приложением без уведомлений, но напоминания не будут показаны.</string>
     <string name="settings_schedule_preview">Напоминания планируются только для актуальных событий с датой контроля и включённым флагом уведомлений.</string>
     <string name="settings_sync_title">Ручная синхронизация</string>
-    <string name="settings_sync_description">Временный ручной запуск V1 sync flow: bootstrap, push и changes. Нужен адрес backend и действующий access token.</string>
+    <string name="settings_sync_description">Здесь можно настроить подключение к backend и при необходимости вручную запустить синхронизацию.</string>
     <string name="settings_sync_base_url">Адрес backend</string>
     <string name="settings_sync_access_token">Access token</string>
+    <string name="settings_sync_not_configured">Синхронизация ещё не настроена</string>
+    <string name="settings_sync_configured">Синхронизация настроена для %1$s</string>
+    <string name="settings_sync_save_config">Сохранить подключение</string>
+    <string name="settings_sync_clear_config">Сбросить подключение</string>
     <string name="settings_sync_run">Запустить синхронизацию</string>
     <string name="settings_sync_idle">Синхронизация ещё не запускалась вручную</string>
     <string name="settings_sync_running">Синхронизация выполняется…</string>

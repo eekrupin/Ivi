@@ -13,11 +13,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ru.ekrupin.ivi.data.sync.config.SyncConfigStore
 
 @Singleton
 class AppSyncRunner @Inject constructor(
     private val fullSyncRunner: FullSyncRunner,
     private val syncStateStore: SyncStateStore,
+    private val syncConfigStore: SyncConfigStore,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
@@ -30,9 +32,8 @@ class AppSyncRunner @Inject constructor(
             if (!mutex.tryLock()) return@launch
             try {
                 val state = syncStateStore.get()
-                val baseUrl = state.configuredBaseUrl?.trim().orEmpty()
-                val accessToken = state.configuredAccessToken?.trim().orEmpty()
-                if (baseUrl.isBlank() || accessToken.isBlank()) return@launch
+                val config = syncConfigStore.get()
+                if (!config.isConfigured) return@launch
 
                 val now = LocalDateTime.now()
                 val lastStart = state.lastForegroundSyncStartedAt
@@ -42,7 +43,7 @@ class AppSyncRunner @Inject constructor(
 
                 syncStateStore.markForegroundSyncStarted(now)
                 _status.value = AppSyncStatus.Running(AppSyncTrigger.Foreground)
-                _status.value = fullSyncRunner.run(baseUrl, accessToken).toAppStatus(AppSyncTrigger.Foreground)
+                _status.value = fullSyncRunner.run(config.baseUrl, config.accessToken).toAppStatus(AppSyncTrigger.Foreground)
             } finally {
                 mutex.unlock()
             }
@@ -52,7 +53,7 @@ class AppSyncRunner @Inject constructor(
     fun triggerManualSync(baseUrl: String, accessToken: String) {
         scope.launch {
             mutex.withLock {
-                syncStateStore.saveSyncConfig(baseUrl.trim(), accessToken.trim())
+                syncConfigStore.save(baseUrl.trim(), accessToken.trim())
                 _status.value = AppSyncStatus.Running(AppSyncTrigger.Manual)
                 _status.value = fullSyncRunner.run(baseUrl.trim(), accessToken.trim()).toAppStatus(AppSyncTrigger.Manual)
             }
