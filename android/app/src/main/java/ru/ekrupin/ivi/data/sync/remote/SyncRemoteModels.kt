@@ -114,3 +114,42 @@ data class RemoteChangesResponse(
     val changes: RemoteChangesPayload,
     val tombstones: List<RemoteTombstone>,
 )
+
+data class RemotePushMutation(
+    val clientMutationId: String,
+    val entityId: String,
+    val baseVersion: Long?,
+    val entityType: String,
+    val operation: String,
+    val payloadJson: String?,
+)
+
+data class RemotePushRequest(
+    val deviceId: String,
+    val lastKnownCursor: String?,
+    val mutations: List<RemotePushMutation>,
+)
+
+data class RemoteAcceptedMutation(
+    val clientMutationId: String?,
+    val entityType: String,
+    val entityId: String,
+    val version: Long,
+)
+
+data class RemoteConflict(
+    val entityType: String,
+    val entityId: String,
+    val clientMutationId: String?,
+    val baseVersion: Long?,
+    val serverVersion: Long,
+    val reason: String,
+    val serverRecordJson: String?,
+)
+
+data class RemotePushResponse(
+    val accepted: List<RemoteAcceptedMutation>,
+    val conflicts: List<RemoteConflict>,
+    val cursor: String,
+    val requiresBootstrap: Boolean,
+)

@@ -120,9 +120,16 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
                 cursor TEXT,
                 lastBootstrapAt TEXT,
                 lastChangesAt TEXT,
-                lastSuccessfulReadAt TEXT
+                lastSuccessfulReadAt TEXT,
+                requiresBootstrap INTEGER NOT NULL DEFAULT 0
             )
             """.trimIndent(),
         )
+    }
+}
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE sync_state ADD COLUMN requiresBootstrap INTEGER NOT NULL DEFAULT 0")
     }
 }

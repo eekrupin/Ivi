@@ -941,8 +941,15 @@ UX разрешений на уведомления:
 Причина:
 - это дает работающую и понятную read-side интеграцию с уже готовым server-side sync trio, не пытаясь преждевременно решить сложный merge локальных несинхронизированных изменений с серверным snapshot
 
+### D-024
+Статус: принято
+Решение:
+- первый client-side push path дренирует `sync_outbox` пакетами `PENDING -> IN_FLIGHT`, удаляет `accepted` записи, переводит конфликтующие записи в `FAILED` и помечает локальные сущности как `CONFLICT`; `requiresBootstrap` фиксируется отдельным флагом в `sync_state`
+Причина:
+- это дает первый рабочий end-to-end sync cycle без преждевременной фоновой оркестрации, retry-машины и conflict UI
+
 ## План следующих шагов
-1. Реализовать client-side drain `sync_outbox` через `POST /v1/sync/push` и связать его с уже готовыми bootstrap/changes read-path сервисами.
+1. Подключить реальный запуск client-side sync pipeline в приложении и/или use-case orchestration поверх уже готовых bootstrap/changes/push сервисов.
 2. После этого начать реальную клиент-серверную интеграцию sync без фото.
 3. Затем уже итеративно усиливать conflict-handling, retry и background sync-детали без пересборки базового контракта.
 

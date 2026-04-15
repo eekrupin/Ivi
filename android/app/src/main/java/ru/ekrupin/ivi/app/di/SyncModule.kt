@@ -6,8 +6,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import okhttp3.OkHttpClient
+import ru.ekrupin.ivi.data.sync.RoomSyncPushApplier
 import ru.ekrupin.ivi.data.sync.RoomSyncSnapshotStore
 import ru.ekrupin.ivi.data.sync.RoomSyncStateStore
+import ru.ekrupin.ivi.data.sync.SyncPushApplier
 import ru.ekrupin.ivi.data.sync.SyncSnapshotStore
 import ru.ekrupin.ivi.data.sync.SyncStateStore
 import ru.ekrupin.ivi.data.sync.remote.OkHttpSyncRemoteDataSource
@@ -29,4 +31,7 @@ object SyncModule {
 
     @Provides
     fun provideSyncStateStore(store: RoomSyncStateStore): SyncStateStore = store
+
+    @Provides
+    fun provideSyncPushApplier(applier: RoomSyncPushApplier): SyncPushApplier = applier
 }

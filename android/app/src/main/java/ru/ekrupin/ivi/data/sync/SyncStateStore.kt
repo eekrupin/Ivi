@@ -10,12 +10,14 @@ data class SyncReadState(
     val lastBootstrapAt: LocalDateTime?,
     val lastChangesAt: LocalDateTime?,
     val lastSuccessfulReadAt: LocalDateTime?,
+    val requiresBootstrap: Boolean,
 )
 
 interface SyncStateStore {
     suspend fun get(): SyncReadState
     suspend fun saveBootstrapCursor(cursor: String, timestamp: LocalDateTime)
     suspend fun saveChangesCursor(cursor: String, timestamp: LocalDateTime)
+    suspend fun setRequiresBootstrap(value: Boolean)
 }
 
 class RoomSyncStateStore @Inject constructor(
@@ -28,6 +30,7 @@ class RoomSyncStateStore @Inject constructor(
             lastBootstrapAt = state?.lastBootstrapAt,
             lastChangesAt = state?.lastChangesAt,
             lastSuccessfulReadAt = state?.lastSuccessfulReadAt,
+            requiresBootstrap = state?.requiresBootstrap ?: false,
         )
     }
 
@@ -40,6 +43,7 @@ class RoomSyncStateStore @Inject constructor(
                 lastBootstrapAt = timestamp,
                 lastChangesAt = existing?.lastChangesAt,
                 lastSuccessfulReadAt = timestamp,
+                requiresBootstrap = false,
             ),
         )
     }
@@ -53,6 +57,21 @@ class RoomSyncStateStore @Inject constructor(
                 lastBootstrapAt = existing?.lastBootstrapAt,
                 lastChangesAt = timestamp,
                 lastSuccessfulReadAt = timestamp,
+                requiresBootstrap = false,
+            ),
+        )
+    }
+
+    override suspend fun setRequiresBootstrap(value: Boolean) {
+        val existing = syncStateDao.get()
+        syncStateDao.insert(
+            SyncStateEntity(
+                id = 1,
+                cursor = existing?.cursor,
+                lastBootstrapAt = existing?.lastBootstrapAt,
+                lastChangesAt = existing?.lastChangesAt,
+                lastSuccessfulReadAt = existing?.lastSuccessfulReadAt,
+                requiresBootstrap = value,
             ),
         )
     }

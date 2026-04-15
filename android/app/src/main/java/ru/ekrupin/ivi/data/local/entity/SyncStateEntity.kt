@@ -11,4 +11,5 @@ data class SyncStateEntity(
     val lastBootstrapAt: LocalDateTime?,
     val lastChangesAt: LocalDateTime?,
     val lastSuccessfulReadAt: LocalDateTime?,
+    val requiresBootstrap: Boolean,
 )

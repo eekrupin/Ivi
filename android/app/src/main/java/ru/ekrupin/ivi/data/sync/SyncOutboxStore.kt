@@ -10,6 +10,7 @@ interface SyncOutboxStore {
     suspend fun pending(limit: Int): List<SyncOutboxEntity>
     suspend fun markInFlight(ids: List<Long>)
     suspend fun markPending(ids: List<Long>)
+    suspend fun markFailed(ids: List<Long>)
     suspend fun delete(ids: List<Long>)
 }
 
@@ -26,6 +27,11 @@ class RoomSyncOutboxStore @Inject constructor(
     override suspend fun markPending(ids: List<Long>) {
         if (ids.isEmpty()) return
         syncOutboxDao.updateStatus(ids, SyncOutboxStatus.PENDING, LocalDateTime.now())
+    }
+
+    override suspend fun markFailed(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        syncOutboxDao.updateStatus(ids, SyncOutboxStatus.FAILED, LocalDateTime.now())
     }
 
     override suspend fun delete(ids: List<Long>) {

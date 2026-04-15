@@ -8,6 +8,8 @@ import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
@@ -27,6 +29,13 @@ class OkHttpSyncRemoteDataSource @Inject constructor(
             accessToken = accessToken,
         ).toChangesResponse()
 
+    override suspend fun push(baseUrl: String, accessToken: String, request: RemotePushRequest): RemotePushResponse =
+        executeJsonPost(
+            url = "${baseUrl.trimEnd('/')}/v1/sync/push",
+            accessToken = accessToken,
+            body = request.toJsonBody(),
+        ).toPushResponse()
+
     private suspend fun executeJsonGet(url: String, accessToken: String): JSONObject = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url(url)
@@ -43,6 +52,22 @@ class OkHttpSyncRemoteDataSource @Inject constructor(
         }
     }
 
+    private suspend fun executeJsonPost(url: String, accessToken: String, body: String): JSONObject = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $accessToken")
+            .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+
+        okHttpClient.newCall(request).execute().use { response ->
+            val responseBody = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IOException("Sync request failed: HTTP ${response.code} $responseBody")
+            }
+            JSONObject(responseBody)
+        }
+    }
+
     private fun JSONObject.toBootstrapResponse(): RemoteBootstrapResponse = RemoteBootstrapResponse(
         cursor = getString("cursor"),
         snapshot = getJSONObject("snapshot").toBootstrapSnapshot(),
@@ -53,6 +78,13 @@ class OkHttpSyncRemoteDataSource @Inject constructor(
         hasMore = optBoolean("hasMore", false),
         changes = getJSONObject("changes").toChangesPayload(),
         tombstones = optJSONArray("tombstones").toTombstones(),
+    )
+
+    private fun JSONObject.toPushResponse(): RemotePushResponse = RemotePushResponse(
+        accepted = optJSONArray("accepted").toAcceptedMutations(),
+        conflicts = optJSONArray("conflicts").toConflicts(),
+        cursor = getString("cursor"),
+        requiresBootstrap = getBoolean("requiresBootstrap"),
     )
 
     private fun JSONObject.toBootstrapSnapshot(): RemoteBootstrapSnapshot = RemoteBootstrapSnapshot(
@@ -169,6 +201,27 @@ class OkHttpSyncRemoteDataSource @Inject constructor(
         )
     }
 
+    private fun JSONArray?.toAcceptedMutations(): List<RemoteAcceptedMutation> = this.toObjects { item ->
+        RemoteAcceptedMutation(
+            clientMutationId = item.optStringOrNull("clientMutationId"),
+            entityType = item.getString("entityType"),
+            entityId = item.getString("entityId"),
+            version = item.getLong("version"),
+        )
+    }
+
+    private fun JSONArray?.toConflicts(): List<RemoteConflict> = this.toObjects { item ->
+        RemoteConflict(
+            entityType = item.getString("entityType"),
+            entityId = item.getString("entityId"),
+            clientMutationId = item.optStringOrNull("clientMutationId"),
+            baseVersion = item.optNullableLong("baseVersion"),
+            serverVersion = item.getLong("serverVersion"),
+            reason = item.getString("reason"),
+            serverRecordJson = if (item.has("serverRecord") && !item.isNull("serverRecord")) item.get("serverRecord").toString() else null,
+        )
+    }
+
     private fun <T> JSONArray?.toObjects(mapper: (JSONObject) -> T): List<T> {
         if (this == null) return emptyList()
         return buildList {
@@ -181,4 +234,26 @@ class OkHttpSyncRemoteDataSource @Inject constructor(
     private fun JSONObject.optNullableInt(name: String): Int? = if (isNull(name)) null else getInt(name)
     private fun JSONObject.optNullableLong(name: String): Long? = if (isNull(name)) null else getLong(name)
     private fun String.toLocalDateTimeUtc(): LocalDateTime = OffsetDateTime.parse(this).toLocalDateTime()
+
+    private fun RemotePushRequest.toJsonBody(): String = JSONObject().apply {
+        put("deviceId", deviceId)
+        if (lastKnownCursor != null) put("lastKnownCursor", lastKnownCursor)
+        put(
+            "mutations",
+            JSONArray().apply {
+                mutations.forEach { mutation ->
+                    put(
+                        JSONObject().apply {
+                            put("clientMutationId", mutation.clientMutationId)
+                            put("entityId", mutation.entityId)
+                            if (mutation.baseVersion != null) put("baseVersion", mutation.baseVersion)
+                            put("entityType", mutation.entityType)
+                            put("operation", mutation.operation)
+                            if (mutation.payloadJson != null) put("payload", JSONObject(mutation.payloadJson))
+                        },
+                    )
+                }
+            },
+        )
+    }.toString()
 }
