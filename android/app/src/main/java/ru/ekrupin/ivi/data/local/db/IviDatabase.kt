@@ -8,6 +8,7 @@ import ru.ekrupin.ivi.data.local.dao.EventTypeDao
 import ru.ekrupin.ivi.data.local.dao.PetDao
 import ru.ekrupin.ivi.data.local.dao.PetEventDao
 import ru.ekrupin.ivi.data.local.dao.ReminderSettingsDao
+import ru.ekrupin.ivi.data.local.dao.SyncConflictDao
 import ru.ekrupin.ivi.data.local.dao.SyncPetMembershipDao
 import ru.ekrupin.ivi.data.local.dao.SyncStateDao
 import ru.ekrupin.ivi.data.local.dao.SyncOutboxDao
@@ -17,6 +18,7 @@ import ru.ekrupin.ivi.data.local.entity.EventTypeEntity
 import ru.ekrupin.ivi.data.local.entity.PetEntity
 import ru.ekrupin.ivi.data.local.entity.PetEventEntity
 import ru.ekrupin.ivi.data.local.entity.ReminderSettingsEntity
+import ru.ekrupin.ivi.data.local.entity.SyncConflictEntity
 import ru.ekrupin.ivi.data.local.entity.SyncPetMembershipEntity
 import ru.ekrupin.ivi.data.local.entity.SyncStateEntity
 import ru.ekrupin.ivi.data.local.entity.SyncOutboxEntity
@@ -31,11 +33,12 @@ import ru.ekrupin.ivi.data.local.entity.WeightEntryEntity
         PetEventEntity::class,
         ReminderSettingsEntity::class,
         SyncOutboxEntity::class,
+        SyncConflictEntity::class,
         SyncUserEntity::class,
         SyncPetMembershipEntity::class,
         SyncStateEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(LocalDateConverters::class)
@@ -46,6 +49,7 @@ abstract class IviDatabase : RoomDatabase() {
     abstract fun petEventDao(): PetEventDao
     abstract fun reminderSettingsDao(): ReminderSettingsDao
     abstract fun syncOutboxDao(): SyncOutboxDao
+    abstract fun syncConflictDao(): SyncConflictDao
     abstract fun syncUserDao(): SyncUserDao
     abstract fun syncPetMembershipDao(): SyncPetMembershipDao
     abstract fun syncStateDao(): SyncStateDao

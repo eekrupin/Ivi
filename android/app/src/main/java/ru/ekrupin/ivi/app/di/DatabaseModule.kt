@@ -13,6 +13,7 @@ import ru.ekrupin.ivi.data.local.dao.EventTypeDao
 import ru.ekrupin.ivi.data.local.dao.PetDao
 import ru.ekrupin.ivi.data.local.dao.PetEventDao
 import ru.ekrupin.ivi.data.local.dao.ReminderSettingsDao
+import ru.ekrupin.ivi.data.local.dao.SyncConflictDao
 import ru.ekrupin.ivi.data.local.dao.SyncPetMembershipDao
 import ru.ekrupin.ivi.data.local.dao.SyncStateDao
 import ru.ekrupin.ivi.data.local.dao.SyncOutboxDao
@@ -22,6 +23,7 @@ import ru.ekrupin.ivi.data.local.db.MIGRATION_1_2
 import ru.ekrupin.ivi.data.local.db.MIGRATION_2_3
 import ru.ekrupin.ivi.data.local.db.MIGRATION_3_4
 import ru.ekrupin.ivi.data.local.db.MIGRATION_4_5
+import ru.ekrupin.ivi.data.local.db.MIGRATION_5_6
 import ru.ekrupin.ivi.data.local.db.IviDatabase
 import ru.ekrupin.ivi.data.sync.RoomSyncOutboxStore
 import ru.ekrupin.ivi.data.sync.SyncOutboxStore
@@ -34,7 +36,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): IviDatabase =
         Room.databaseBuilder(context, IviDatabase::class.java, "ivi.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
 
     @Provides fun providePetDao(database: IviDatabase): PetDao = database.petDao()
@@ -43,6 +45,7 @@ object DatabaseModule {
     @Provides fun providePetEventDao(database: IviDatabase): PetEventDao = database.petEventDao()
     @Provides fun provideReminderSettingsDao(database: IviDatabase): ReminderSettingsDao = database.reminderSettingsDao()
     @Provides fun provideSyncOutboxDao(database: IviDatabase): SyncOutboxDao = database.syncOutboxDao()
+    @Provides fun provideSyncConflictDao(database: IviDatabase): SyncConflictDao = database.syncConflictDao()
     @Provides fun provideSyncUserDao(database: IviDatabase): SyncUserDao = database.syncUserDao()
     @Provides fun provideSyncPetMembershipDao(database: IviDatabase): SyncPetMembershipDao = database.syncPetMembershipDao()
     @Provides fun provideSyncStateDao(database: IviDatabase): SyncStateDao = database.syncStateDao()

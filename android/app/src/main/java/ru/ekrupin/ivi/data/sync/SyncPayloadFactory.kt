@@ -17,6 +17,7 @@ class SyncPayloadFactory {
         entity: EventTypeEntity,
         pet: PetEntity,
         now: LocalDateTime,
+        baseVersion: Long? = entity.serverVersion,
     ): SyncOutboxEntity = SyncOutboxEntity(
         entityType = SyncEntityType.EVENT_TYPE,
         entityLocalId = entity.id,
@@ -31,20 +32,20 @@ class SyncPayloadFactory {
             put("colorArgb", entity.colorArgb)
             put("iconKey", entity.iconKey)
         }.toString(),
-        baseVersion = entity.serverVersion,
+        baseVersion = baseVersion,
         clientMutationId = UUID.randomUUID().toString(),
         status = SyncOutboxStatus.PENDING,
         createdAt = now,
         updatedAt = now,
     )
 
-    fun eventTypeDelete(entity: EventTypeEntity, now: LocalDateTime): SyncOutboxEntity = SyncOutboxEntity(
+    fun eventTypeDelete(entity: EventTypeEntity, now: LocalDateTime, baseVersion: Long? = entity.serverVersion): SyncOutboxEntity = SyncOutboxEntity(
         entityType = SyncEntityType.EVENT_TYPE,
         entityLocalId = entity.id,
         entityRemoteId = entity.remoteId.orEmpty(),
         operation = SyncOperation.DELETE,
         payloadJson = null,
-        baseVersion = entity.serverVersion,
+        baseVersion = baseVersion,
         clientMutationId = UUID.randomUUID().toString(),
         status = SyncOutboxStatus.PENDING,
         createdAt = now,
@@ -56,6 +57,7 @@ class SyncPayloadFactory {
         pet: PetEntity,
         eventType: EventTypeEntity,
         now: LocalDateTime,
+        baseVersion: Long? = entity.serverVersion,
     ): SyncOutboxEntity = SyncOutboxEntity(
         entityType = SyncEntityType.PET_EVENT,
         entityLocalId = entity.id,
@@ -70,20 +72,20 @@ class SyncPayloadFactory {
             put("notificationsEnabled", entity.notificationsEnabled)
             put("status", entity.status.name)
         }.toString(),
-        baseVersion = entity.serverVersion,
+        baseVersion = baseVersion,
         clientMutationId = UUID.randomUUID().toString(),
         status = SyncOutboxStatus.PENDING,
         createdAt = now,
         updatedAt = now,
     )
 
-    fun petEventDelete(entity: PetEventEntity, now: LocalDateTime): SyncOutboxEntity = SyncOutboxEntity(
+    fun petEventDelete(entity: PetEventEntity, now: LocalDateTime, baseVersion: Long? = entity.serverVersion): SyncOutboxEntity = SyncOutboxEntity(
         entityType = SyncEntityType.PET_EVENT,
         entityLocalId = entity.id,
         entityRemoteId = entity.remoteId.orEmpty(),
         operation = SyncOperation.DELETE,
         payloadJson = null,
-        baseVersion = entity.serverVersion,
+        baseVersion = baseVersion,
         clientMutationId = UUID.randomUUID().toString(),
         status = SyncOutboxStatus.PENDING,
         createdAt = now,
@@ -94,6 +96,7 @@ class SyncPayloadFactory {
         entity: WeightEntryEntity,
         pet: PetEntity,
         now: LocalDateTime,
+        baseVersion: Long? = entity.serverVersion,
     ): SyncOutboxEntity = SyncOutboxEntity(
         entityType = SyncEntityType.WEIGHT_ENTRY,
         entityLocalId = entity.id,
@@ -105,7 +108,7 @@ class SyncPayloadFactory {
             put("weightGrams", entity.weightGrams)
             put("comment", entity.comment)
         }.toString(),
-        baseVersion = entity.serverVersion,
+        baseVersion = baseVersion,
         clientMutationId = UUID.randomUUID().toString(),
         status = SyncOutboxStatus.PENDING,
         createdAt = now,

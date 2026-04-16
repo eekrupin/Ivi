@@ -983,7 +983,7 @@ UX разрешений на уведомления:
 - Background worker использует тот же `SyncSessionStore`, что и ручной и foreground sync; если sync не настроен или пользователь не вошел, worker завершается `success` без шума.
 - Для предотвращения параллельных запусков foreground/manual/background sync используют общий `SyncExecutionGate`; если другой sync уже идет, worker тихо завершается `success`.
 - Для V1 worker трактует результаты так: `Success`, `ConflictsDetected`, `RequiresBootstrap`, `AuthError`, `ValidationError` -> `Result.success()`; `NetworkError`, `ServerError` c 5xx и `UnknownError` -> `Result.retry()`.
-- Background sync сейчас intentionally quiet: без пользовательских popup, без системных уведомлений, без conflict UI.
+- Background sync сейчас intentionally quiet: без пользовательских popup и без системных уведомлений; conflict UI при этом уже доступен вручную из настроек.
 
 ### D-023
 Статус: принято
@@ -1034,8 +1034,15 @@ UX разрешений на уведомления:
 Причина:
 - это переводит sync из debug-only режима в реальный пользовательский сценарий подключения к backend, не ломая уже готовый sync foundation
 
+### D-030
+Статус: принято
+Решение:
+- первый client-side conflict UX строится вокруг локальной таблицы `sync_conflicts`, отдельного экрана конфликтов из секции синхронизации и двух явных действий `принять серверную версию` / `повторить мои изменения`; повторная отправка всегда пересобирает новую mutation из текущего локального состояния с `baseVersion = serverVersion`, а не переиспользует старую failed outbox-запись
+Причина:
+- это дает пользователю реальный и понятный выход из `CONFLICT` без premature merge editor'а, не меняя server-side контракт и не ломая уже существующий sync foundation
+
 ## План следующих шагов
-1. Следующим шагом выбрать один из двух вариантов усиления UX вокруг уже готового sync foundation: conflict UI или polish auth/session UX.
+1. Следующим шагом после V1 conflict UI решить, что важнее для пользователя: conflict details/polish, более явный глобальный entrypoint конфликтов или следующая итерация auth/session UX.
 2. После этого развивать реальную клиент-серверную интеграцию sync уже не только в foreground/manual/background foundation режиме, но и в более устойчивом пользовательском сценарии.
 3. Затем уже итеративно усиливать retry, background orchestration и conflict-handling без пересборки базового контракта.
 

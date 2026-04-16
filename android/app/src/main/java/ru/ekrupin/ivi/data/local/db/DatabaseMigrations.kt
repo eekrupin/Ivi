@@ -141,3 +141,25 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         database.execSQL("ALTER TABLE sync_state ADD COLUMN lastForegroundSyncStartedAt TEXT")
     }
 }
+
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS sync_conflicts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                entityType TEXT NOT NULL,
+                entityLocalId INTEGER NOT NULL,
+                entityRemoteId TEXT NOT NULL,
+                clientMutationId TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                serverVersion INTEGER NOT NULL,
+                serverRecordJson TEXT,
+                conflictedAt TEXT NOT NULL
+            )
+            """.trimIndent(),
+        )
+        database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_sync_conflicts_entityType_entityLocalId ON sync_conflicts(entityType, entityLocalId)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS index_sync_conflicts_clientMutationId ON sync_conflicts(clientMutationId)")
+    }
+}

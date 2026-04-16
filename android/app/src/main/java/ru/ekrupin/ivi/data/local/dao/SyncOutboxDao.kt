@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import ru.ekrupin.ivi.data.local.entity.SyncOutboxEntity
+import ru.ekrupin.ivi.data.sync.model.SyncEntityType
 import ru.ekrupin.ivi.data.sync.model.SyncOutboxStatus
 
 @Dao
@@ -27,4 +28,7 @@ interface SyncOutboxDao {
 
     @Query("DELETE FROM sync_outbox WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>)
+
+    @Query("DELETE FROM sync_outbox WHERE entityType = :entityType AND entityLocalId = :entityLocalId")
+    suspend fun deleteByEntity(entityType: SyncEntityType, entityLocalId: Long)
 }

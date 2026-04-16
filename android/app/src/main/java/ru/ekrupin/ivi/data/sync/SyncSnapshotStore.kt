@@ -7,6 +7,7 @@ import ru.ekrupin.ivi.app.core.AppConstants
 import ru.ekrupin.ivi.data.local.dao.EventTypeDao
 import ru.ekrupin.ivi.data.local.dao.PetDao
 import ru.ekrupin.ivi.data.local.dao.PetEventDao
+import ru.ekrupin.ivi.data.local.dao.SyncConflictDao
 import ru.ekrupin.ivi.data.local.dao.SyncOutboxDao
 import ru.ekrupin.ivi.data.local.dao.SyncPetMembershipDao
 import ru.ekrupin.ivi.data.local.dao.SyncUserDao
@@ -39,6 +40,7 @@ class RoomSyncSnapshotStore @Inject constructor(
     private val eventTypeDao: EventTypeDao,
     private val petEventDao: PetEventDao,
     private val weightEntryDao: WeightEntryDao,
+    private val syncConflictDao: SyncConflictDao,
     private val syncUserDao: SyncUserDao,
     private val syncPetMembershipDao: SyncPetMembershipDao,
     private val syncOutboxDao: SyncOutboxDao,
@@ -50,6 +52,7 @@ class RoomSyncSnapshotStore @Inject constructor(
 
         val syncTime = LocalDateTime.now()
         database.withTransaction {
+            syncConflictDao.deleteAll()
             syncUserDao.deleteAll()
             syncUserDao.insertAll(snapshot.snapshot.users.map { it.toEntity(syncTime) })
 
@@ -122,6 +125,7 @@ class RoomSyncSnapshotStore @Inject constructor(
 
     private suspend fun upsertEventType(item: RemoteSyncEventType, syncTime: LocalDateTime) {
         val existing = eventTypeDao.getByRemoteId(item.remoteId)
+        if (existing?.syncState == SyncState.CONFLICT) return
         eventTypeDao.insert(
             EventTypeEntity(
                 id = existing?.id ?: 0,
@@ -147,6 +151,7 @@ class RoomSyncSnapshotStore @Inject constructor(
         val eventType = eventTypeDao.getByRemoteId(item.eventTypeRemoteId)
             ?: error("EventType ${item.eventTypeRemoteId} is missing for pet event import")
         val existing = petEventDao.getByRemoteId(item.remoteId)
+        if (existing?.syncState == SyncState.CONFLICT) return
         petEventDao.insert(
             PetEventEntity(
                 id = existing?.id ?: 0,
@@ -171,6 +176,7 @@ class RoomSyncSnapshotStore @Inject constructor(
 
     private suspend fun upsertWeightEntry(item: RemoteSyncWeightEntry, syncTime: LocalDateTime) {
         val existing = weightEntryDao.getByRemoteId(item.remoteId)
+        if (existing?.syncState == SyncState.CONFLICT) return
         weightEntryDao.insert(
             WeightEntryEntity(
                 id = existing?.id ?: 0,
@@ -195,6 +201,7 @@ class RoomSyncSnapshotStore @Inject constructor(
             when (tombstone.entityType) {
                 "EVENT_TYPE" -> {
                     val existing = eventTypeDao.getByRemoteId(tombstone.remoteId) ?: return@forEach
+                    if (existing.syncState == SyncState.CONFLICT) return@forEach
                     eventTypeDao.insert(
                         existing.copy(
                             deletedAt = tombstone.deletedAt,
@@ -210,6 +217,7 @@ class RoomSyncSnapshotStore @Inject constructor(
 
                 "PET_EVENT" -> {
                     val existing = petEventDao.getByRemoteId(tombstone.remoteId) ?: return@forEach
+                    if (existing.syncState == SyncState.CONFLICT) return@forEach
                     petEventDao.insert(
                         existing.copy(
                             deletedAt = tombstone.deletedAt,
@@ -224,6 +232,7 @@ class RoomSyncSnapshotStore @Inject constructor(
 
                 "WEIGHT_ENTRY" -> {
                     val existing = weightEntryDao.getByRemoteId(tombstone.remoteId) ?: return@forEach
+                    if (existing.syncState == SyncState.CONFLICT) return@forEach
                     weightEntryDao.insert(
                         existing.copy(
                             deletedAt = tombstone.deletedAt,

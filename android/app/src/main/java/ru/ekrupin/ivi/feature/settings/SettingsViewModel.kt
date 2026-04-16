@@ -17,6 +17,7 @@ import ru.ekrupin.ivi.data.auth.session.AuthSessionResult
 import ru.ekrupin.ivi.data.sync.AppSyncRunner
 import ru.ekrupin.ivi.data.sync.AppSyncStatus
 import ru.ekrupin.ivi.data.sync.config.SyncSessionStore
+import ru.ekrupin.ivi.data.sync.conflict.SyncConflictRepository
 import ru.ekrupin.ivi.domain.model.ReminderSettings
 import ru.ekrupin.ivi.domain.repository.ReminderSettingsRepository
 import java.time.LocalDateTime
@@ -27,6 +28,7 @@ class SettingsViewModel @Inject constructor(
     private val appSyncRunner: AppSyncRunner,
     private val authSessionManager: AuthSessionManager,
     private val syncSessionStore: SyncSessionStore,
+    private val syncConflictRepository: SyncConflictRepository,
 ) : ViewModel() {
     val settings: StateFlow<ReminderSettings?> = reminderSettingsRepository.observeSettings()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -36,7 +38,8 @@ class SettingsViewModel @Inject constructor(
         _syncUiState,
         syncSessionStore.session,
         appSyncRunner.status,
-    ) { ui, session, status ->
+        syncConflictRepository.observeConflictCount(),
+    ) { ui, session, status, conflictCount ->
         val connectionStatus = when {
             session.isAuthenticated -> ConnectionStatus.Connected(
                 backendUrl = session.baseUrl,
@@ -61,6 +64,7 @@ class SettingsViewModel @Inject constructor(
             isConnected = session.isAuthenticated,
             connectionStatus = connectionStatus,
             status = derivedSyncStatus,
+            conflictCount = conflictCount,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SyncUiState())
 
@@ -153,6 +157,7 @@ data class SyncUiState(
     val displayNameEdited: Boolean = false,
     val connectionStatus: ConnectionStatus = ConnectionStatus.NotConfigured,
     val status: SyncStatus = SyncStatus.Idle,
+    val conflictCount: Int = 0,
 )
 
 sealed interface ConnectionStatus {

@@ -44,7 +44,10 @@ import ru.ekrupin.ivi.R
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    onOpenConflicts: () -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
     val context = LocalContext.current
     val activity = context.findActivity()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -287,6 +290,31 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                         else -> MaterialTheme.colorScheme.onSurface
                     },
                 )
+                if (syncUiState.conflictCount > 0) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                        ),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_sync_conflicts_title, syncUiState.conflictCount),
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_sync_conflicts_body),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            OutlinedButton(onClick = onOpenConflicts) {
+                                Text(stringResource(R.string.settings_sync_conflicts_open))
+                            }
+                        }
+                    }
+                }
                 if (!syncUiState.isConnected) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         FilledTonalButton(

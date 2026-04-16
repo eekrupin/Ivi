@@ -5,9 +5,11 @@ import java.time.LocalDateTime
 import javax.inject.Inject
 import ru.ekrupin.ivi.data.local.dao.EventTypeDao
 import ru.ekrupin.ivi.data.local.dao.PetEventDao
+import ru.ekrupin.ivi.data.local.dao.SyncConflictDao
 import ru.ekrupin.ivi.data.local.dao.SyncOutboxDao
 import ru.ekrupin.ivi.data.local.dao.WeightEntryDao
 import ru.ekrupin.ivi.data.local.db.IviDatabase
+import ru.ekrupin.ivi.data.local.entity.SyncConflictEntity
 import ru.ekrupin.ivi.data.local.entity.SyncOutboxEntity
 import ru.ekrupin.ivi.data.sync.model.SyncEntityType
 import ru.ekrupin.ivi.data.sync.model.SyncOutboxStatus
@@ -34,6 +36,7 @@ interface SyncPushApplier {
 class RoomSyncPushApplier @Inject constructor(
     private val database: IviDatabase,
     private val syncOutboxDao: SyncOutboxDao,
+    private val syncConflictDao: SyncConflictDao,
     private val eventTypeDao: EventTypeDao,
     private val petEventDao: PetEventDao,
     private val weightEntryDao: WeightEntryDao,
@@ -49,6 +52,7 @@ class RoomSyncPushApplier @Inject constructor(
         database.withTransaction {
             accepted.forEach { item ->
                 val outbox = item.clientMutationId?.let(byClientMutationId::get) ?: return@forEach
+                syncConflictDao.deleteByClientMutationId(outbox.clientMutationId)
                 when (outbox.entityType) {
                     SyncEntityType.EVENT_TYPE -> {
                         val entity = eventTypeDao.getById(outbox.entityLocalId) ?: return@forEach
@@ -106,6 +110,18 @@ class RoomSyncPushApplier @Inject constructor(
         database.withTransaction {
             conflicts.forEach { item ->
                 val outbox = item.clientMutationId?.let(byClientMutationId::get) ?: return@forEach
+                syncConflictDao.upsert(
+                    SyncConflictEntity(
+                        entityType = outbox.entityType,
+                        entityLocalId = outbox.entityLocalId,
+                        entityRemoteId = outbox.entityRemoteId,
+                        clientMutationId = outbox.clientMutationId,
+                        reason = item.reason,
+                        serverVersion = item.serverVersion,
+                        serverRecordJson = item.serverRecordJson,
+                        conflictedAt = conflictedAt,
+                    ),
+                )
                 when (outbox.entityType) {
                     SyncEntityType.EVENT_TYPE -> {
                         val entity = eventTypeDao.getById(outbox.entityLocalId) ?: return@forEach
