@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.MonitorWeight
@@ -55,6 +56,7 @@ fun HomeScreen(
     onOpenWeight: () -> Unit,
     onOpenEvents: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenConflicts: () -> Unit,
     onEditPet: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -132,6 +134,49 @@ fun HomeScreen(
                         value = uiState.nextHighlight.title,
                         supporting = uiState.nextHighlight.subtitle,
                     )
+                }
+            }
+        }
+
+        uiState.conflictBanner?.let { banner ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.42f),
+                ),
+                shape = RoundedCornerShape(24.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Icon(Icons.Outlined.CloudSync, contentDescription = null)
+                        Column {
+                            Text(
+                                text = stringResource(R.string.home_conflicts_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = stringResource(R.string.home_conflicts_count, banner.count),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    Text(
+                        text = stringResource(R.string.home_conflicts_body),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    FilledTonalButton(onClick = onOpenConflicts) {
+                        Text(stringResource(R.string.home_conflicts_open))
+                    }
                 }
             }
         }

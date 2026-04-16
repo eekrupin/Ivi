@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import ru.ekrupin.ivi.core.util.toDisplayDate
 import ru.ekrupin.ivi.core.util.toAgeLabel
 import ru.ekrupin.ivi.core.util.toWeightLabel
+import ru.ekrupin.ivi.data.sync.conflict.SyncConflictRepository
 import ru.ekrupin.ivi.domain.model.PetEventStatus
 import ru.ekrupin.ivi.domain.repository.EventTypeRepository
 import ru.ekrupin.ivi.domain.repository.PetEventRepository
@@ -30,6 +31,10 @@ data class HomeEventItem(
     val subtitle: String,
 )
 
+data class HomeConflictBanner(
+    val count: Int,
+)
+
 data class HomeUiState(
     val petName: String = "",
     val birthDate: LocalDate? = null,
@@ -39,6 +44,7 @@ data class HomeUiState(
     val currentWeightLabel: String = "Пока нет записей",
     val nextHighlight: HomeHighlight = HomeHighlight(),
     val activeEvents: List<HomeEventItem> = emptyList(),
+    val conflictBanner: HomeConflictBanner? = null,
 )
 
 @HiltViewModel
@@ -48,8 +54,9 @@ class HomeViewModel @Inject constructor(
     private val petEventRepository: PetEventRepository,
     private val eventTypeRepository: EventTypeRepository,
     private val reminderSettingsRepository: ReminderSettingsRepository,
+    private val syncConflictRepository: SyncConflictRepository,
 ) : ViewModel() {
-    val uiState: StateFlow<HomeUiState> = combine(
+    private val baseUiState = combine(
         petRepository.observePet(),
         weightRepository.observeWeightHistory(),
         petEventRepository.observeEvents(),
@@ -102,6 +109,17 @@ class HomeViewModel @Inject constructor(
             currentWeightLabel = currentWeight,
             nextHighlight = nextHighlight,
             activeEvents = activeEvents.take(3),
+        )
+    }
+
+    val uiState: StateFlow<HomeUiState> = combine(
+        baseUiState,
+        syncConflictRepository.observeConflictCount(),
+    ) { baseUiState, conflictCount ->
+        baseUiState.copy(
+            conflictBanner = conflictCount.takeIf { it > 0 }?.let { count ->
+                HomeConflictBanner(count = count)
+            },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 

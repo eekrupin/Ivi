@@ -39,6 +39,10 @@
     <string name="home_no_active_events_title">Сейчас все спокойно</string>
     <string name="home_next_highlight">Ближайшее важное</string>
     <string name="home_next_highlight_title">Что сейчас важнее всего</string>
+    <string name="home_conflicts_title">Нужно внимание к синхронизации</string>
+    <string name="home_conflicts_count">Есть конфликтные записи: %1$d</string>
+    <string name="home_conflicts_body">Откройте конфликты, чтобы выбрать серверную версию или повторить свои изменения.</string>
+    <string name="home_conflicts_open">Открыть конфликты</string>
 
     <string name="pet_edit_title">Данные питомца</string>
     <string name="pet_edit_screen_title">Профиль Иви</string>

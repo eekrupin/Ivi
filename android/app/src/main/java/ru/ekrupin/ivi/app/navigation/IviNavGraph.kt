@@ -32,6 +32,7 @@ fun IviNavGraph(
                 onOpenWeight = { navController.navigate(IviDestination.Weight.route) },
                 onOpenEvents = { navController.navigate(IviDestination.Events.route) },
                 onOpenSettings = { navController.navigate(IviDestination.Settings.route) },
+                onOpenConflicts = { navController.navigate(IviDestination.SyncConflicts.route) },
                 onEditPet = { navController.navigate(IviDestination.PetEdit.route) },
             )
         }
