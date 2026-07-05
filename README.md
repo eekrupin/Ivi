@@ -87,6 +87,41 @@ Lint для debug:
 ./android/gradlew -p ./android :app:lintDebug
 ```
 
+Локальный Android smoke против backend в Windows + WSL:
+
+```bash
+./backend/gradlew -p ./backend run
+curl http://127.0.0.1:8080/health
+ss -lntp | grep 8080
+```
+
+В WSL backend должен слушать `*:8080` или `0.0.0.0:8080`. Если Windows открывает `http://localhost:8080/health`, но не открывает `http://127.0.0.1:8080/health`, настройте portproxy в PowerShell от администратора:
+
+```powershell
+$wslIp = (wsl hostname -I).Trim().Split()[0]
+
+netsh interface portproxy delete v4tov4 listenaddress=127.0.0.1 listenport=8080
+
+netsh interface portproxy add v4tov4 `
+  listenaddress=127.0.0.1 `
+  listenport=8080 `
+  connectaddress=$wslIp `
+  connectport=8080
+
+netsh interface portproxy show all
+```
+
+После этого на Windows должен открываться `http://127.0.0.1:8080/health`. Затем выполните `adb reverse` через Windows Android SDK:
+
+```powershell
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" devices
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" -s emulator-5554 reverse tcp:8080 tcp:8080
+```
+
+`emulator-5554` замените на имя устройства из `adb devices`. После `adb reverse` в Android-эмуляторе используйте backend URL `http://127.0.0.1:8080`.
+
+Backend dev-конфигурация должна слушать `0.0.0.0:8080`; HTTP cleartext разрешен только в debug-сборке.
+
 Рекомендуемый порядок проверки после изменений:
 
 ```bash
@@ -173,9 +208,19 @@ Android-часть теперь живет в `android/` как отдельны
 
 ## Документация
 
-Главный рабочий документ проекта — `AGENTS.md`.
+Стартовый документ для агентской работы — `AGENTS.md`.
 
-В нем зафиксированы:
+Подробный проектный контекст разнесен по `docs/project/`:
+
+- `docs/project/product.md`
+- `docs/project/android.md`
+- `docs/project/backend.md`
+- `docs/project/sync.md`
+- `docs/project/runbooks.md`
+- `docs/project/decisions.md`
+- `docs/project/roadmap.md`
+
+В этих документах зафиксированы:
 
 - продуктовые границы MVP;
 - архитектурные договоренности;

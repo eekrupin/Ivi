@@ -22,7 +22,14 @@ class AppSyncRunnerTest {
         val stateStore = FakeRunnerSyncStateStore()
         val sessionStore = FakeSyncSessionStore()
         val authManager = AuthSessionManager(FakeAuthRemoteDataSource(), sessionStore)
-        val runner = AppSyncRunner(AuthorizedSyncRunner(useCase, authManager), stateStore, authManager, SyncExecutionGate())
+        val runner = AppSyncRunner(
+            AuthorizedSyncRunner(useCase, authManager),
+            FakePublishLocalDataToServerRecovery(),
+            FakeReplaceLocalDataFromServerRecovery(),
+            stateStore,
+            authManager,
+            SyncExecutionGate(),
+        )
 
         runner.triggerForegroundSync()
         delay(100)
@@ -56,7 +63,14 @@ class AppSyncRunnerTest {
             ),
         )
         val authManager = AuthSessionManager(FakeAuthRemoteDataSource(), sessionStore)
-        val runner = AppSyncRunner(AuthorizedSyncRunner(useCase, authManager), stateStore, authManager, SyncExecutionGate())
+        val runner = AppSyncRunner(
+            AuthorizedSyncRunner(useCase, authManager),
+            FakePublishLocalDataToServerRecovery(),
+            FakeReplaceLocalDataFromServerRecovery(),
+            stateStore,
+            authManager,
+            SyncExecutionGate(),
+        )
 
         runner.triggerForegroundSync()
         delay(100)
@@ -91,7 +105,14 @@ class AppSyncRunnerTest {
             ),
         )
         val authManager = AuthSessionManager(FakeAuthRemoteDataSource(), sessionStore)
-        val runner = AppSyncRunner(AuthorizedSyncRunner(useCase, authManager), stateStore, authManager, SyncExecutionGate())
+        val runner = AppSyncRunner(
+            AuthorizedSyncRunner(useCase, authManager),
+            FakePublishLocalDataToServerRecovery(),
+            FakeReplaceLocalDataFromServerRecovery(),
+            stateStore,
+            authManager,
+            SyncExecutionGate(),
+        )
 
         runner.triggerForegroundSync()
         delay(100)
@@ -114,7 +135,14 @@ class AppSyncRunnerTest {
             ),
         )
         val authManager = AuthSessionManager(FakeAuthRemoteDataSource(), sessionStore)
-        val runner = AppSyncRunner(AuthorizedSyncRunner(useCase, authManager), stateStore, authManager, SyncExecutionGate())
+        val runner = AppSyncRunner(
+            AuthorizedSyncRunner(useCase, authManager),
+            FakePublishLocalDataToServerRecovery(),
+            FakeReplaceLocalDataFromServerRecovery(),
+            stateStore,
+            authManager,
+            SyncExecutionGate(),
+        )
 
         runner.triggerManualSync()
         delay(100)
@@ -122,7 +150,60 @@ class AppSyncRunnerTest {
         assertEquals(1, useCase.calls)
         assertTrue(runner.status.value is AppSyncStatus.Success)
     }
+
+    @Test
+    fun publishLocalData_runsRecoveryAndReportsSuccess() = runBlocking {
+        val useCase = FakeRunFullSyncUseCase()
+        val publishRecovery = FakePublishLocalDataToServerRecovery()
+        val sessionStore = FakeSyncSessionStore(authenticatedSession())
+        val authManager = AuthSessionManager(FakeAuthRemoteDataSource(), sessionStore)
+        val runner = AppSyncRunner(
+            AuthorizedSyncRunner(useCase, authManager),
+            publishRecovery,
+            FakeReplaceLocalDataFromServerRecovery(),
+            FakeRunnerSyncStateStore(),
+            authManager,
+            SyncExecutionGate(),
+        )
+
+        runner.triggerPublishLocalDataToServer()
+        delay(100)
+
+        assertEquals(1, publishRecovery.calls)
+        assertTrue(runner.status.value is AppSyncStatus.Success)
+    }
+
+    @Test
+    fun replaceLocalData_runsRecoveryAndReportsSuccess() = runBlocking {
+        val useCase = FakeRunFullSyncUseCase()
+        val replaceRecovery = FakeReplaceLocalDataFromServerRecovery()
+        val sessionStore = FakeSyncSessionStore(authenticatedSession())
+        val authManager = AuthSessionManager(FakeAuthRemoteDataSource(), sessionStore)
+        val runner = AppSyncRunner(
+            AuthorizedSyncRunner(useCase, authManager),
+            FakePublishLocalDataToServerRecovery(),
+            replaceRecovery,
+            FakeRunnerSyncStateStore(),
+            authManager,
+            SyncExecutionGate(),
+        )
+
+        runner.triggerReplaceLocalDataFromServer()
+        delay(100)
+
+        assertEquals(1, replaceRecovery.calls)
+        assertTrue(runner.status.value is AppSyncStatus.Success)
+    }
 }
+
+private fun authenticatedSession() = SyncSession(
+    baseUrl = "http://localhost:8080",
+    accessToken = "token",
+    refreshToken = "refresh",
+    userId = "1",
+    email = "user@example.com",
+    displayName = "User",
+)
 
 private class FakeSyncSessionStore(
     initial: SyncSession = SyncSession("", "", "", null, null, null),
@@ -157,6 +238,22 @@ private class FakeSyncSessionStore(
     override suspend fun clear() {
         current = SyncSession("", "", "", null, null, null)
         session.value = current
+    }
+}
+
+private class FakePublishLocalDataToServerRecovery : PublishLocalDataToServerRecovery {
+    var calls = 0
+    override suspend fun publishLocalDataToServer(): SyncRecoveryResult {
+        calls += 1
+        return SyncRecoveryResult.Success
+    }
+}
+
+private class FakeReplaceLocalDataFromServerRecovery : ReplaceLocalDataFromServerRecovery {
+    var calls = 0
+    override suspend fun replaceLocalDataFromServer(): SyncRecoveryResult {
+        calls += 1
+        return SyncRecoveryResult.Success
     }
 }
 

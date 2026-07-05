@@ -16,6 +16,9 @@ interface PetEventDao {
     @Query("SELECT * FROM pet_events WHERE deletedAt IS NULL ORDER BY eventDate DESC")
     fun observeAll(): Flow<List<PetEventEntity>>
 
+    @Query("SELECT * FROM pet_events WHERE deletedAt IS NULL ORDER BY id ASC")
+    suspend fun getActiveForSync(): List<PetEventEntity>
+
     @Query("SELECT * FROM pet_events WHERE id = :id LIMIT 1")
     fun observeById(id: Long): Flow<PetEventEntity?>
 

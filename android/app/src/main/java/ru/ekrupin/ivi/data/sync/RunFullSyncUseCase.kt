@@ -63,6 +63,11 @@ class RunFullSyncUseCase @Inject constructor(
         } catch (exception: SyncHttpException) {
             when (exception.code) {
                 401 -> SyncRunResult.AuthError
+                404 -> if (exception.message?.contains("current_pet_not_found") == true) {
+                    SyncRunResult.NoServerPet
+                } else {
+                    SyncRunResult.NetworkError(exception.message ?: "HTTP ${exception.code}")
+                }
                 in 500..599 -> SyncRunResult.ServerError(exception.code)
                 else -> SyncRunResult.NetworkError(exception.message ?: "HTTP ${exception.code}")
             }
@@ -87,6 +92,7 @@ sealed interface SyncRunResult {
     data object ConflictsDetected : SyncRunResult
     data class ValidationError(val message: String) : SyncRunResult
     data object AuthError : SyncRunResult
+    data object NoServerPet : SyncRunResult
     data class NetworkError(val message: String) : SyncRunResult
     data class ServerError(val code: Int) : SyncRunResult
     data class UnknownError(val message: String) : SyncRunResult

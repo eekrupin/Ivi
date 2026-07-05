@@ -10,6 +10,8 @@ import javax.inject.Singleton
 import okhttp3.OkHttpClient
 import ru.ekrupin.ivi.data.auth.remote.AuthRemoteDataSource
 import ru.ekrupin.ivi.data.auth.remote.OkHttpAuthRemoteDataSource
+import ru.ekrupin.ivi.data.pet.remote.OkHttpPetAccessRemoteDataSource
+import ru.ekrupin.ivi.data.pet.remote.PetAccessRemoteDataSource
 import ru.ekrupin.ivi.data.sync.config.DataStoreSyncSessionStore
 import ru.ekrupin.ivi.data.sync.config.SyncSessionStore
 import ru.ekrupin.ivi.data.sync.RoomSyncPushApplier
@@ -18,6 +20,10 @@ import ru.ekrupin.ivi.data.sync.RoomSyncStateStore
 import ru.ekrupin.ivi.data.sync.SyncCoordinator
 import ru.ekrupin.ivi.data.sync.SyncEngine
 import ru.ekrupin.ivi.data.sync.FullSyncRunner
+import ru.ekrupin.ivi.data.sync.PublishLocalDataToServerRecovery
+import ru.ekrupin.ivi.data.sync.PublishLocalDataToServerUseCase
+import ru.ekrupin.ivi.data.sync.ReplaceLocalDataFromServerRecovery
+import ru.ekrupin.ivi.data.sync.ReplaceLocalDataFromServerUseCase
 import ru.ekrupin.ivi.data.sync.RunFullSyncUseCase
 import ru.ekrupin.ivi.data.sync.SyncPushApplier
 import ru.ekrupin.ivi.data.sync.SyncSnapshotStore
@@ -46,6 +52,7 @@ object SyncModule {
     fun provideSyncPushApplier(applier: RoomSyncPushApplier): SyncPushApplier = applier
 
     @Provides
+    @Singleton
     fun provideSyncSessionStore(
         @ApplicationContext context: Context,
         syncStateStore: SyncStateStore,
@@ -56,8 +63,18 @@ object SyncModule {
         OkHttpAuthRemoteDataSource(okHttpClient)
 
     @Provides
+    fun providePetAccessRemoteDataSource(okHttpClient: OkHttpClient): PetAccessRemoteDataSource =
+        OkHttpPetAccessRemoteDataSource(okHttpClient)
+
+    @Provides
     fun provideSyncEngine(coordinator: SyncCoordinator): SyncEngine = coordinator
 
     @Provides
     fun provideFullSyncRunner(useCase: RunFullSyncUseCase): FullSyncRunner = useCase
+
+    @Provides
+    fun providePublishLocalDataToServerRecovery(useCase: PublishLocalDataToServerUseCase): PublishLocalDataToServerRecovery = useCase
+
+    @Provides
+    fun provideReplaceLocalDataFromServerRecovery(useCase: ReplaceLocalDataFromServerUseCase): ReplaceLocalDataFromServerRecovery = useCase
 }

@@ -27,6 +27,7 @@ class SyncWorker @AssistedInject constructor(
             SyncRunResult.ConflictsDetected -> Result.success()
             is SyncRunResult.RequiresBootstrap -> Result.success()
             SyncRunResult.AuthError -> Result.success()
+            SyncRunResult.NoServerPet -> Result.success()
             is SyncRunResult.ValidationError -> Result.success()
             is SyncRunResult.NetworkError -> Result.retry()
             is SyncRunResult.ServerError -> if (syncResult.code in 500..599) Result.retry() else Result.success()

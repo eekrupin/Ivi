@@ -29,6 +29,9 @@ interface SyncOutboxDao {
     @Query("DELETE FROM sync_outbox WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>)
 
+    @Query("DELETE FROM sync_outbox")
+    suspend fun deleteAll()
+
     @Query("DELETE FROM sync_outbox WHERE entityType = :entityType AND entityLocalId = :entityLocalId")
     suspend fun deleteByEntity(entityType: SyncEntityType, entityLocalId: Long)
 }

@@ -22,7 +22,7 @@ enum class InviteStatusEntity {
 }
 
 enum class EventCategoryEntity {
-    TICK,
+    TICK_PROTECTION,
     DEWORMING,
     VACCINATION,
     CHECKUP,

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,8 +33,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
@@ -49,6 +52,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     val activity = context.findActivity()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val syncUiState by viewModel.syncUiState.collectAsStateWithLifecycle()
@@ -241,7 +245,6 @@ fun SettingsScreen(
                             text = stringResource(
                                 R.string.settings_sync_connected,
                                 connection.displayName ?: connection.email,
-                                connection.backendUrl,
                             ),
                             style = MaterialTheme.typography.bodyMedium,
                         )
@@ -286,10 +289,69 @@ fun SettingsScreen(
                         SyncStatus.ForegroundSuccess -> MaterialTheme.colorScheme.primary
                         SyncStatus.Conflicts -> MaterialTheme.colorScheme.tertiary
                         SyncStatus.RequiresBootstrap -> MaterialTheme.colorScheme.error
+                        SyncStatus.NoServerPet -> MaterialTheme.colorScheme.tertiary
                         is SyncStatus.Error -> MaterialTheme.colorScheme.error
                         else -> MaterialTheme.colorScheme.onSurface
                     },
                 )
+                if (syncUiState.status == SyncStatus.RequiresBootstrap || syncUiState.status == SyncStatus.NoServerPet) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (syncUiState.status == SyncStatus.NoServerPet) {
+                                MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.45f)
+                            } else {
+                                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f)
+                            },
+                        ),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text(
+                                text = if (syncUiState.status == SyncStatus.NoServerPet) {
+                                    stringResource(R.string.settings_sync_no_server_pet_title)
+                                } else {
+                                    stringResource(R.string.settings_sync_bootstrap_recovery_title)
+                                },
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                            Text(
+                                text = if (syncUiState.status == SyncStatus.NoServerPet) {
+                                    stringResource(R.string.settings_sync_no_server_pet_body)
+                                } else {
+                                    stringResource(R.string.settings_sync_bootstrap_recovery_body)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilledTonalButton(
+                                    onClick = viewModel::publishLocalDataToServer,
+                                    enabled = syncUiState.isConnected && syncUiState.status != SyncStatus.Running,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(stringResource(R.string.settings_sync_publish_local))
+                                }
+                                if (syncUiState.status == SyncStatus.RequiresBootstrap) {
+                                    OutlinedButton(
+                                        onClick = viewModel::replaceLocalDataFromServer,
+                                        enabled = syncUiState.isConnected && syncUiState.status != SyncStatus.Running,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text(stringResource(R.string.settings_sync_replace_from_server))
+                                    }
+                                }
+                            }
+                            if (syncUiState.status == SyncStatus.RequiresBootstrap) {
+                                Text(
+                                    text = stringResource(R.string.settings_sync_replace_warning),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+                    }
+                }
                 if (syncUiState.conflictCount > 0) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -315,6 +377,82 @@ fun SettingsScreen(
                         }
                     }
                 }
+                if (syncUiState.isConnected) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
+                        ),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_invite_title),
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_invite_body),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            FilledTonalButton(
+                                onClick = viewModel::createInvite,
+                                enabled = syncUiState.status != SyncStatus.Running && syncUiState.inviteStatus != InviteStatus.Loading,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(stringResource(R.string.settings_invite_create))
+                            }
+                            OutlinedTextField(
+                                value = syncUiState.inviteCode,
+                                onValueChange = viewModel::updateInviteCode,
+                                label = { Text(stringResource(R.string.settings_invite_code)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                            )
+                            OutlinedButton(
+                                onClick = viewModel::acceptInvite,
+                                enabled = syncUiState.inviteCode.isNotBlank() && syncUiState.inviteStatus != InviteStatus.Loading,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(stringResource(R.string.settings_invite_accept))
+                            }
+                            when (val inviteStatus = syncUiState.inviteStatus) {
+                                InviteStatus.Idle -> Unit
+                                InviteStatus.Loading -> Text(
+                                    text = stringResource(R.string.settings_invite_loading),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                is InviteStatus.Created -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    SelectionContainer {
+                                        Text(
+                                            text = stringResource(R.string.settings_invite_created, inviteStatus.code),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                        )
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            clipboardManager.setText(AnnotatedString(inviteStatus.code))
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text(stringResource(R.string.common_copy))
+                                    }
+                                }
+                                InviteStatus.Accepted -> Text(
+                                    text = stringResource(R.string.settings_invite_accepted),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                is InviteStatus.Error -> Text(
+                                    text = inviteStatus.message,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
+                    }
+                }
                 if (!syncUiState.isConnected) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         FilledTonalButton(
@@ -334,6 +472,7 @@ fun SettingsScreen(
                     OutlinedButton(
                         onClick = viewModel::logout,
                         enabled = syncUiState.status != SyncStatus.Running,
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(stringResource(R.string.settings_sync_logout))
                     }
@@ -341,6 +480,7 @@ fun SettingsScreen(
                 FilledTonalButton(
                     onClick = viewModel::runSync,
                     enabled = syncUiState.isConnected && syncUiState.status != SyncStatus.Running,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
                         text = if (syncUiState.status == SyncStatus.Running) {
@@ -418,5 +558,6 @@ private fun SyncStatus.label(context: Context): String = when (this) {
     SyncStatus.ForegroundSuccess -> context.getString(R.string.settings_sync_foreground_success)
     SyncStatus.Conflicts -> context.getString(R.string.settings_sync_conflicts)
     SyncStatus.RequiresBootstrap -> context.getString(R.string.settings_sync_requires_bootstrap)
+    SyncStatus.NoServerPet -> context.getString(R.string.settings_sync_no_server_pet)
     is SyncStatus.Error -> message
 }

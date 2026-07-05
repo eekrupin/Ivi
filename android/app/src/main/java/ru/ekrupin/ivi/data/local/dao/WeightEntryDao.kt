@@ -15,6 +15,9 @@ interface WeightEntryDao {
     @Query("SELECT * FROM weight_entries WHERE deletedAt IS NULL ORDER BY date DESC")
     fun observeAll(): Flow<List<WeightEntryEntity>>
 
+    @Query("SELECT * FROM weight_entries WHERE deletedAt IS NULL ORDER BY id ASC")
+    suspend fun getActiveForSync(): List<WeightEntryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(weightEntry: WeightEntryEntity): Long
 

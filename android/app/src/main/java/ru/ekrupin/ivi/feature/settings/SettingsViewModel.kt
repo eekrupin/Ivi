@@ -14,10 +14,12 @@ import kotlinx.coroutines.launch
 import ru.ekrupin.ivi.app.core.AppConstants
 import ru.ekrupin.ivi.data.auth.session.AuthSessionManager
 import ru.ekrupin.ivi.data.auth.session.AuthSessionResult
+import ru.ekrupin.ivi.data.pet.remote.PetAccessRemoteDataSource
 import ru.ekrupin.ivi.data.sync.AppSyncRunner
 import ru.ekrupin.ivi.data.sync.AppSyncStatus
 import ru.ekrupin.ivi.data.sync.config.SyncSessionStore
 import ru.ekrupin.ivi.data.sync.conflict.SyncConflictRepository
+import ru.ekrupin.ivi.data.sync.remote.SyncHttpException
 import ru.ekrupin.ivi.domain.model.ReminderSettings
 import ru.ekrupin.ivi.domain.repository.ReminderSettingsRepository
 import java.time.LocalDateTime
@@ -29,6 +31,7 @@ class SettingsViewModel @Inject constructor(
     private val authSessionManager: AuthSessionManager,
     private val syncSessionStore: SyncSessionStore,
     private val syncConflictRepository: SyncConflictRepository,
+    private val petAccessRemoteDataSource: PetAccessRemoteDataSource,
 ) : ViewModel() {
     val settings: StateFlow<ReminderSettings?> = reminderSettingsRepository.observeSettings()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -67,6 +70,10 @@ class SettingsViewModel @Inject constructor(
             conflictCount = conflictCount,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SyncUiState())
+
+    fun updateInviteCode(value: String) {
+        _syncUiState.value = _syncUiState.value.copy(inviteCode = value)
+    }
 
     fun saveSettings(
         firstEnabled: Boolean,
@@ -108,6 +115,61 @@ class SettingsViewModel @Inject constructor(
 
     fun runSync() {
         appSyncRunner.triggerManualSync()
+    }
+
+    fun publishLocalDataToServer() {
+        appSyncRunner.triggerPublishLocalDataToServer()
+    }
+
+    fun replaceLocalDataFromServer() {
+        appSyncRunner.triggerReplaceLocalDataFromServer()
+    }
+
+    fun createInvite() {
+        viewModelScope.launch {
+            val session = authSessionManager.getSession()
+            if (!session.isAuthenticated) {
+                _syncUiState.value = _syncUiState.value.copy(inviteStatus = InviteStatus.Error("Сначала войдите в синхронизацию"))
+                return@launch
+            }
+
+            _syncUiState.value = _syncUiState.value.copy(inviteStatus = InviteStatus.Loading)
+            try {
+                val pet = petAccessRemoteDataSource.getCurrentPet(session.baseUrl, session.accessToken)
+                val invite = petAccessRemoteDataSource.createInvite(session.baseUrl, session.accessToken, pet.id)
+                _syncUiState.value = _syncUiState.value.copy(inviteStatus = InviteStatus.Created(invite.code))
+            } catch (exception: Exception) {
+                _syncUiState.value = _syncUiState.value.copy(inviteStatus = InviteStatus.Error(exception.toInviteMessage("Не удалось создать приглашение")))
+            }
+        }
+    }
+
+    fun acceptInvite() {
+        viewModelScope.launch {
+            val current = _syncUiState.value
+            val code = current.inviteCode.trim()
+            if (code.isBlank()) {
+                _syncUiState.value = current.copy(inviteStatus = InviteStatus.Error("Введите код приглашения"))
+                return@launch
+            }
+
+            val session = authSessionManager.getSession()
+            if (!session.isAuthenticated) {
+                _syncUiState.value = current.copy(inviteStatus = InviteStatus.Error("Сначала войдите в синхронизацию"))
+                return@launch
+            }
+
+            _syncUiState.value = current.copy(inviteStatus = InviteStatus.Loading)
+            try {
+                petAccessRemoteDataSource.acceptInvite(session.baseUrl, session.accessToken, code)
+                _syncUiState.value = _syncUiState.value.copy(
+                    inviteCode = "",
+                    inviteStatus = InviteStatus.Accepted,
+                )
+            } catch (exception: Exception) {
+                _syncUiState.value = _syncUiState.value.copy(inviteStatus = InviteStatus.Error(exception.toInviteMessage("Не удалось принять приглашение")))
+            }
+        }
     }
 
     fun login() {
@@ -158,7 +220,17 @@ data class SyncUiState(
     val connectionStatus: ConnectionStatus = ConnectionStatus.NotConfigured,
     val status: SyncStatus = SyncStatus.Idle,
     val conflictCount: Int = 0,
+    val inviteCode: String = "",
+    val inviteStatus: InviteStatus = InviteStatus.Idle,
 )
+
+sealed interface InviteStatus {
+    data object Idle : InviteStatus
+    data object Loading : InviteStatus
+    data class Created(val code: String) : InviteStatus
+    data object Accepted : InviteStatus
+    data class Error(val message: String) : InviteStatus
+}
 
 sealed interface ConnectionStatus {
     data object NotConfigured : ConnectionStatus
@@ -179,6 +251,7 @@ sealed interface SyncStatus {
     data object Success : SyncStatus
     data object Conflicts : SyncStatus
     data object RequiresBootstrap : SyncStatus
+    data object NoServerPet : SyncStatus
     data object ForegroundSuccess : SyncStatus
     data class Error(val message: String) : SyncStatus
 }
@@ -210,5 +283,23 @@ private fun AppSyncStatus.toSyncStatus(): SyncStatus = when (this) {
     is AppSyncStatus.Success -> if (trigger == ru.ekrupin.ivi.data.sync.AppSyncTrigger.Foreground) SyncStatus.ForegroundSuccess else SyncStatus.Success
     is AppSyncStatus.Conflicts -> SyncStatus.Conflicts
     is AppSyncStatus.RequiresBootstrap -> SyncStatus.RequiresBootstrap
+    is AppSyncStatus.NoServerPet -> SyncStatus.NoServerPet
     is AppSyncStatus.Error -> SyncStatus.Error(message)
+}
+
+private fun Exception.toInviteMessage(fallback: String): String {
+    if (this is SyncHttpException) {
+        val body = message.orEmpty()
+        return when {
+            code == 404 && body.contains("current_pet_not_found") -> "Сначала отправьте данные этого устройства на сервер, чтобы создать серверного питомца"
+            code == 404 && body.contains("invite_not_found") -> "Приглашение не найдено. Проверьте код"
+            code == 409 && body.contains("user_already_bound_to_pet") -> "Этот аккаунт уже привязан к питомцу"
+            code == 409 && body.contains("invite_expired") -> "Срок действия приглашения истек"
+            code == 409 && body.contains("invite_not_active") -> "Приглашение уже использовано или недействительно"
+            code == 403 && body.contains("owner_required") -> "Создать приглашение может только владелец питомца"
+            code in 500..599 -> "Ошибка сервера: HTTP $code"
+            else -> fallback
+        }
+    }
+    return message ?: fallback
 }

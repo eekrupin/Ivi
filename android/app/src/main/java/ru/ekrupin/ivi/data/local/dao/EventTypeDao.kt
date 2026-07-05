@@ -16,6 +16,9 @@ interface EventTypeDao {
     @Query("SELECT * FROM event_types WHERE deletedAt IS NULL ORDER BY isActive DESC, name ASC")
     fun observeAll(): Flow<List<EventTypeEntity>>
 
+    @Query("SELECT * FROM event_types WHERE deletedAt IS NULL ORDER BY id ASC")
+    suspend fun getActiveForSync(): List<EventTypeEntity>
+
     @Query("SELECT * FROM event_types WHERE deletedAt IS NULL AND isActive = 1 ORDER BY name ASC")
     fun observeActive(): Flow<List<EventTypeEntity>>
 

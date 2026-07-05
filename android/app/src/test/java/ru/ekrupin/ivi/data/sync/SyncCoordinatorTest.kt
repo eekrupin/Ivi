@@ -307,12 +307,14 @@ internal class FakeSyncOutboxStore(
     val markedPending = mutableListOf<Long>()
     val markedFailed = mutableListOf<Long>()
     val deleted = mutableListOf<Long>()
+    var deleteAllCalls = 0
 
     override suspend fun pending(limit: Int): List<SyncOutboxEntity> = items.filter { it.status == SyncOutboxStatus.PENDING }.take(limit)
     override suspend fun markInFlight(ids: List<Long>) { markedInFlight += ids }
     override suspend fun markPending(ids: List<Long>) { markedPending += ids }
     override suspend fun markFailed(ids: List<Long>) { markedFailed += ids }
     override suspend fun delete(ids: List<Long>) { deleted += ids }
+    override suspend fun deleteAll() { deleteAllCalls += 1; items.clear() }
 }
 
 internal class FakeSyncPushApplier : SyncPushApplier {

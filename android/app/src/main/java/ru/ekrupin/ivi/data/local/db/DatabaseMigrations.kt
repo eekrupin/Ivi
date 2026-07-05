@@ -130,20 +130,37 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
 
 val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL("ALTER TABLE sync_state ADD COLUMN requiresBootstrap INTEGER NOT NULL DEFAULT 0")
+        database.addColumnIfMissing(
+            table = "sync_state",
+            column = "requiresBootstrap",
+            definition = "INTEGER NOT NULL DEFAULT 0",
+        )
     }
 }
 
 val MIGRATION_4_5 = object : Migration(4, 5) {
     override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL("ALTER TABLE sync_state ADD COLUMN configuredBaseUrl TEXT")
-        database.execSQL("ALTER TABLE sync_state ADD COLUMN configuredAccessToken TEXT")
-        database.execSQL("ALTER TABLE sync_state ADD COLUMN lastForegroundSyncStartedAt TEXT")
+        database.addColumnIfMissing(
+            table = "sync_state",
+            column = "configuredBaseUrl",
+            definition = "TEXT",
+        )
+        database.addColumnIfMissing(
+            table = "sync_state",
+            column = "configuredAccessToken",
+            definition = "TEXT",
+        )
+        database.addColumnIfMissing(
+            table = "sync_state",
+            column = "lastForegroundSyncStartedAt",
+            definition = "TEXT",
+        )
     }
 }
 
 val MIGRATION_5_6 = object : Migration(5, 6) {
     override fun migrate(database: SupportSQLiteDatabase) {
+        database.normalizeSyncableTablesForV6()
         database.execSQL(
             """
             CREATE TABLE IF NOT EXISTS sync_conflicts (
@@ -162,4 +179,238 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
         database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_sync_conflicts_entityType_entityLocalId ON sync_conflicts(entityType, entityLocalId)")
         database.execSQL("CREATE INDEX IF NOT EXISTS index_sync_conflicts_clientMutationId ON sync_conflicts(clientMutationId)")
     }
+}
+
+private fun SupportSQLiteDatabase.normalizeSyncableTablesForV6() {
+    execSQL("PRAGMA foreign_keys=OFF")
+    normalizePetsTableForV6()
+    normalizeEventTypesTableForV6()
+    normalizeWeightEntriesTableForV6()
+    normalizePetEventsTableForV6()
+    execSQL("PRAGMA foreign_keys=ON")
+}
+
+private fun SupportSQLiteDatabase.normalizePetsTableForV6() {
+    execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS pets_new (
+            id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            birthDate TEXT,
+            photoUri TEXT,
+            createdAt TEXT NOT NULL,
+            updatedAt TEXT NOT NULL,
+            remoteId TEXT,
+            serverVersion INTEGER,
+            serverUpdatedAt TEXT,
+            deletedAt TEXT,
+            syncState TEXT NOT NULL,
+            lastSyncedAt TEXT,
+            PRIMARY KEY(id)
+        )
+        """.trimIndent(),
+    )
+    execSQL(
+        """
+        INSERT INTO pets_new (
+            id, name, birthDate, photoUri, createdAt, updatedAt, remoteId, serverVersion,
+            serverUpdatedAt, deletedAt, syncState, lastSyncedAt
+        )
+        SELECT
+            id,
+            name,
+            birthDate,
+            photoUri,
+            createdAt,
+            updatedAt,
+            remoteId,
+            serverVersion,
+            serverUpdatedAt,
+            deletedAt,
+            COALESCE(syncState, 'SYNCED'),
+            lastSyncedAt
+        FROM pets
+        """.trimIndent(),
+    )
+    execSQL("DROP TABLE pets")
+    execSQL("ALTER TABLE pets_new RENAME TO pets")
+}
+
+private fun SupportSQLiteDatabase.normalizeEventTypesTableForV6() {
+    execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS event_types_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            defaultDurationDays INTEGER,
+            isActive INTEGER NOT NULL,
+            colorArgb INTEGER,
+            iconKey TEXT,
+            createdAt TEXT NOT NULL,
+            updatedAt TEXT NOT NULL,
+            remoteId TEXT,
+            serverVersion INTEGER,
+            serverUpdatedAt TEXT,
+            deletedAt TEXT,
+            syncState TEXT NOT NULL,
+            lastSyncedAt TEXT
+        )
+        """.trimIndent(),
+    )
+    execSQL(
+        """
+        INSERT INTO event_types_new (
+            id, name, category, defaultDurationDays, isActive, colorArgb, iconKey, createdAt,
+            updatedAt, remoteId, serverVersion, serverUpdatedAt, deletedAt, syncState, lastSyncedAt
+        )
+        SELECT
+            id,
+            name,
+            category,
+            defaultDurationDays,
+            isActive,
+            colorArgb,
+            iconKey,
+            createdAt,
+            updatedAt,
+            remoteId,
+            serverVersion,
+            serverUpdatedAt,
+            deletedAt,
+            COALESCE(syncState, 'SYNCED'),
+            lastSyncedAt
+        FROM event_types
+        """.trimIndent(),
+    )
+    execSQL("DROP TABLE event_types")
+    execSQL("ALTER TABLE event_types_new RENAME TO event_types")
+}
+
+private fun SupportSQLiteDatabase.normalizeWeightEntriesTableForV6() {
+    execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS weight_entries_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            petId INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            weightGrams INTEGER NOT NULL,
+            comment TEXT,
+            createdAt TEXT NOT NULL,
+            updatedAt TEXT NOT NULL,
+            remoteId TEXT,
+            serverVersion INTEGER,
+            serverUpdatedAt TEXT,
+            deletedAt TEXT,
+            syncState TEXT NOT NULL,
+            lastSyncedAt TEXT,
+            FOREIGN KEY(petId) REFERENCES pets(id) ON UPDATE NO ACTION ON DELETE CASCADE
+        )
+        """.trimIndent(),
+    )
+    execSQL(
+        """
+        INSERT INTO weight_entries_new (
+            id, petId, date, weightGrams, comment, createdAt, updatedAt, remoteId, serverVersion,
+            serverUpdatedAt, deletedAt, syncState, lastSyncedAt
+        )
+        SELECT
+            id,
+            petId,
+            date,
+            weightGrams,
+            comment,
+            createdAt,
+            COALESCE(updatedAt, createdAt),
+            remoteId,
+            serverVersion,
+            serverUpdatedAt,
+            deletedAt,
+            COALESCE(syncState, 'SYNCED'),
+            lastSyncedAt
+        FROM weight_entries
+        """.trimIndent(),
+    )
+    execSQL("DROP TABLE weight_entries")
+    execSQL("ALTER TABLE weight_entries_new RENAME TO weight_entries")
+    execSQL("CREATE INDEX IF NOT EXISTS index_weight_entries_petId ON weight_entries(petId)")
+    execSQL("CREATE INDEX IF NOT EXISTS index_weight_entries_date ON weight_entries(date)")
+}
+
+private fun SupportSQLiteDatabase.normalizePetEventsTableForV6() {
+    execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS pet_events_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            petId INTEGER NOT NULL,
+            eventTypeId INTEGER NOT NULL,
+            eventDate TEXT NOT NULL,
+            dueDate TEXT,
+            comment TEXT,
+            notificationsEnabled INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            createdAt TEXT NOT NULL,
+            updatedAt TEXT NOT NULL,
+            remoteId TEXT,
+            serverVersion INTEGER,
+            serverUpdatedAt TEXT,
+            deletedAt TEXT,
+            syncState TEXT NOT NULL,
+            lastSyncedAt TEXT,
+            FOREIGN KEY(petId) REFERENCES pets(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+            FOREIGN KEY(eventTypeId) REFERENCES event_types(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+        )
+        """.trimIndent(),
+    )
+    execSQL(
+        """
+        INSERT INTO pet_events_new (
+            id, petId, eventTypeId, eventDate, dueDate, comment, notificationsEnabled, status,
+            createdAt, updatedAt, remoteId, serverVersion, serverUpdatedAt, deletedAt, syncState, lastSyncedAt
+        )
+        SELECT
+            id,
+            petId,
+            eventTypeId,
+            eventDate,
+            dueDate,
+            comment,
+            notificationsEnabled,
+            status,
+            createdAt,
+            updatedAt,
+            remoteId,
+            serverVersion,
+            serverUpdatedAt,
+            deletedAt,
+            COALESCE(syncState, 'SYNCED'),
+            lastSyncedAt
+        FROM pet_events
+        """.trimIndent(),
+    )
+    execSQL("DROP TABLE pet_events")
+    execSQL("ALTER TABLE pet_events_new RENAME TO pet_events")
+    execSQL("CREATE INDEX IF NOT EXISTS index_pet_events_petId ON pet_events(petId)")
+    execSQL("CREATE INDEX IF NOT EXISTS index_pet_events_eventTypeId ON pet_events(eventTypeId)")
+    execSQL("CREATE INDEX IF NOT EXISTS index_pet_events_eventDate ON pet_events(eventDate)")
+}
+
+private fun SupportSQLiteDatabase.addColumnIfMissing(
+    table: String,
+    column: String,
+    definition: String,
+) {
+    if (!hasColumn(table, column)) {
+        execSQL("ALTER TABLE $table ADD COLUMN $column $definition")
+    }
+}
+
+private fun SupportSQLiteDatabase.hasColumn(table: String, column: String): Boolean {
+    query("PRAGMA table_info($table)").use { cursor ->
+        val nameIndex = cursor.getColumnIndex("name")
+        while (cursor.moveToNext()) {
+            if (cursor.getString(nameIndex) == column) return true
+        }
+    }
+    return false
 }

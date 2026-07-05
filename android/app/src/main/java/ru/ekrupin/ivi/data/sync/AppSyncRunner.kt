@@ -16,6 +16,8 @@ import ru.ekrupin.ivi.data.auth.session.AuthSessionManager
 @Singleton
 class AppSyncRunner @Inject constructor(
     private val authorizedSyncRunner: AuthorizedSyncRunner,
+    private val publishLocalDataToServerRecovery: PublishLocalDataToServerRecovery,
+    private val replaceLocalDataFromServerRecovery: ReplaceLocalDataFromServerRecovery,
     private val syncStateStore: SyncStateStore,
     private val authSessionManager: AuthSessionManager,
     private val syncExecutionGate: SyncExecutionGate,
@@ -53,6 +55,24 @@ class AppSyncRunner @Inject constructor(
             }
         }
     }
+
+    fun triggerPublishLocalDataToServer() {
+        scope.launch {
+            syncExecutionGate.runOrSkip {
+                _status.value = AppSyncStatus.Running(AppSyncTrigger.Manual)
+                _status.value = publishLocalDataToServerRecovery.publishLocalDataToServer().toAppStatus(AppSyncTrigger.Manual)
+            }
+        }
+    }
+
+    fun triggerReplaceLocalDataFromServer() {
+        scope.launch {
+            syncExecutionGate.runOrSkip {
+                _status.value = AppSyncStatus.Running(AppSyncTrigger.Manual)
+                _status.value = replaceLocalDataFromServerRecovery.replaceLocalDataFromServer().toAppStatus(AppSyncTrigger.Manual)
+            }
+        }
+    }
 }
 
 enum class AppSyncTrigger {
@@ -66,6 +86,7 @@ sealed interface AppSyncStatus {
     data class Success(val trigger: AppSyncTrigger) : AppSyncStatus
     data class Conflicts(val trigger: AppSyncTrigger) : AppSyncStatus
     data class RequiresBootstrap(val trigger: AppSyncTrigger, val reason: String) : AppSyncStatus
+    data class NoServerPet(val trigger: AppSyncTrigger) : AppSyncStatus
     data class Error(val trigger: AppSyncTrigger, val message: String) : AppSyncStatus
 }
 
@@ -75,7 +96,15 @@ private fun SyncRunResult.toAppStatus(trigger: AppSyncTrigger): AppSyncStatus = 
     SyncRunResult.ConflictsDetected -> AppSyncStatus.Conflicts(trigger)
     is SyncRunResult.ValidationError -> AppSyncStatus.Error(trigger, message)
     SyncRunResult.AuthError -> AppSyncStatus.Error(trigger, "Проверьте access token")
+    SyncRunResult.NoServerPet -> AppSyncStatus.NoServerPet(trigger)
     is SyncRunResult.NetworkError -> AppSyncStatus.Error(trigger, message)
     is SyncRunResult.ServerError -> AppSyncStatus.Error(trigger, "Ошибка сервера: HTTP $code")
     is SyncRunResult.UnknownError -> AppSyncStatus.Error(trigger, message)
+}
+
+private fun SyncRecoveryResult.toAppStatus(trigger: AppSyncTrigger): AppSyncStatus = when (this) {
+    SyncRecoveryResult.Success -> AppSyncStatus.Success(trigger)
+    SyncRecoveryResult.ConflictsDetected -> AppSyncStatus.Conflicts(trigger)
+    SyncRecoveryResult.RequiresBootstrap -> AppSyncStatus.RequiresBootstrap(trigger, "Сервер снова запросил полный bootstrap")
+    is SyncRecoveryResult.Error -> AppSyncStatus.Error(trigger, message)
 }

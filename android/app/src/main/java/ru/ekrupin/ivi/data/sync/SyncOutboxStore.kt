@@ -12,6 +12,7 @@ interface SyncOutboxStore {
     suspend fun markPending(ids: List<Long>)
     suspend fun markFailed(ids: List<Long>)
     suspend fun delete(ids: List<Long>)
+    suspend fun deleteAll()
 }
 
 class RoomSyncOutboxStore @Inject constructor(
@@ -37,5 +38,9 @@ class RoomSyncOutboxStore @Inject constructor(
     override suspend fun delete(ids: List<Long>) {
         if (ids.isEmpty()) return
         syncOutboxDao.deleteByIds(ids)
+    }
+
+    override suspend fun deleteAll() {
+        syncOutboxDao.deleteAll()
     }
 }
