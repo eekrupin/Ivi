@@ -17,10 +17,13 @@ class OkHttpPetAccessRemoteDataSource @Inject constructor(
     private val okHttpClient: OkHttpClient,
 ) : PetAccessRemoteDataSource {
     override suspend fun getCurrentPet(baseUrl: String, accessToken: String): RemotePetAccessPet =
+        getCurrentPetAccess(baseUrl, accessToken).pet
+
+    override suspend fun getCurrentPetAccess(baseUrl: String, accessToken: String): RemotePetAccessContext =
         executeJsonGet(
             url = "${baseUrl.trimEnd('/')}/v1/pets/current",
             accessToken = accessToken,
-        ).getJSONObject("pet").toPet()
+        ).toPetAccessContext()
 
     override suspend fun createPet(baseUrl: String, accessToken: String, name: String, birthDate: LocalDate?): RemotePetAccessPet =
         executeJsonPost(
@@ -44,12 +47,12 @@ class OkHttpPetAccessRemoteDataSource @Inject constructor(
             )
         }
 
-    override suspend fun acceptInvite(baseUrl: String, accessToken: String, code: String): RemotePetAccessPet =
+    override suspend fun acceptInvite(baseUrl: String, accessToken: String, code: String): RemotePetAccessContext =
         executeJsonPost(
             url = "${baseUrl.trimEnd('/')}/v1/invites/accept",
             accessToken = accessToken,
             body = JSONObject().put("code", code.trim()).toString(),
-        ).getJSONObject("pet").toPet()
+        ).toPetAccessContext()
 
     private suspend fun executeJsonGet(url: String, accessToken: String): JSONObject = withContext(Dispatchers.IO) {
         val request = Request.Builder()
@@ -90,6 +93,16 @@ class OkHttpPetAccessRemoteDataSource @Inject constructor(
         name = getString("name"),
         birthDate = optString("birthDate").takeIf { it.isNotBlank() }?.let(LocalDate::parse),
         createdAt = getString("createdAt").toLocalDateTimeUtc(),
+    )
+
+    private fun JSONObject.toPetAccessContext(): RemotePetAccessContext = RemotePetAccessContext(
+        pet = getJSONObject("pet").toPet(),
+        membership = getJSONObject("membership").toMembership(),
+    )
+
+    private fun JSONObject.toMembership(): RemotePetMembership = RemotePetMembership(
+        petId = optString("petId"),
+        role = getString("role"),
     )
 
     private fun String.toLocalDateTimeUtc(): LocalDateTime = OffsetDateTime.parse(this).toLocalDateTime()

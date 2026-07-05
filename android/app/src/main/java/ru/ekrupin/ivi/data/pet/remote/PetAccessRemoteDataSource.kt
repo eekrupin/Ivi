@@ -17,9 +17,20 @@ data class RemotePetInvite(
     val petId: String,
 )
 
+data class RemotePetMembership(
+    val petId: String,
+    val role: String,
+)
+
+data class RemotePetAccessContext(
+    val pet: RemotePetAccessPet,
+    val membership: RemotePetMembership,
+)
+
 interface PetAccessRemoteDataSource {
     suspend fun getCurrentPet(baseUrl: String, accessToken: String): RemotePetAccessPet
+    suspend fun getCurrentPetAccess(baseUrl: String, accessToken: String): RemotePetAccessContext
     suspend fun createPet(baseUrl: String, accessToken: String, name: String, birthDate: LocalDate?): RemotePetAccessPet
     suspend fun createInvite(baseUrl: String, accessToken: String, petId: String): RemotePetInvite
-    suspend fun acceptInvite(baseUrl: String, accessToken: String, code: String): RemotePetAccessPet
+    suspend fun acceptInvite(baseUrl: String, accessToken: String, code: String): RemotePetAccessContext
 }

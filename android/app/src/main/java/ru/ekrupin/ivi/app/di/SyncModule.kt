@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 import ru.ekrupin.ivi.data.auth.remote.AuthRemoteDataSource
 import ru.ekrupin.ivi.data.auth.remote.OkHttpAuthRemoteDataSource
 import ru.ekrupin.ivi.data.pet.remote.OkHttpPetAccessRemoteDataSource
@@ -36,7 +37,12 @@ import ru.ekrupin.ivi.data.sync.remote.SyncRemoteDataSource
 object SyncModule {
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder().build()
+    fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
+        .callTimeout(30, TimeUnit.SECONDS)
+        .build()
 
     @Provides
     fun provideSyncRemoteDataSource(okHttpClient: OkHttpClient): SyncRemoteDataSource =

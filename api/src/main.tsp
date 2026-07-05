@@ -248,6 +248,7 @@ model CreatePetRequest {
 model CurrentPetResponse {
   @statusCode statusCode: 200;
   pet: Pet;
+  membership: PetMembership;
 }
 
 model CreatePetResponse {

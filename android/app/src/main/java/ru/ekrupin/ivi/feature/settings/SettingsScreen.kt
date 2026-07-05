@@ -79,6 +79,13 @@ fun SettingsScreen(
         }
     }
 
+    LaunchedEffect(syncUiState.isConnected, syncUiState.status) {
+        val shouldRefreshPetAccess = syncUiState.isConnected &&
+            syncUiState.petAccess is PetAccessUiState.Unknown &&
+            syncUiState.status.allowsPetAccessRefresh()
+        if (shouldRefreshPetAccess) viewModel.refreshCurrentPetAccess()
+    }
+
     val notificationStatusVersion = refreshTick
     val notificationsPermissionGranted = context.isNotificationPermissionGranted(notificationStatusVersion)
     val notificationsEnabledInSystem = NotificationManagerCompat.from(context).areNotificationsEnabled()
@@ -396,12 +403,39 @@ fun SettingsScreen(
                                 text = stringResource(R.string.settings_invite_body),
                                 style = MaterialTheme.typography.bodySmall,
                             )
-                            FilledTonalButton(
-                                onClick = viewModel::createInvite,
-                                enabled = syncUiState.status != SyncStatus.Running && syncUiState.inviteStatus != InviteStatus.Loading,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(stringResource(R.string.settings_invite_create))
+                            when (val petAccess = syncUiState.petAccess) {
+                                PetAccessUiState.Unknown -> Text(
+                                    text = stringResource(R.string.settings_pet_access_loading),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                PetAccessUiState.Loading -> Text(
+                                    text = stringResource(R.string.settings_pet_access_loading),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                is PetAccessUiState.Known -> {
+                                    Text(
+                                        text = stringResource(R.string.settings_pet_access_pet, petAccess.petName),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.settings_pet_access_role, petAccess.role.label()),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                }
+                            }
+                            if ((syncUiState.petAccess as? PetAccessUiState.Known)?.role == PetAccessRole.Owner) {
+                                FilledTonalButton(
+                                    onClick = viewModel::createInvite,
+                                    enabled = syncUiState.status != SyncStatus.Running && syncUiState.inviteStatus != InviteStatus.Loading,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(stringResource(R.string.settings_invite_create))
+                                }
+                            } else if ((syncUiState.petAccess as? PetAccessUiState.Known)?.role == PetAccessRole.Member) {
+                                Text(
+                                    text = stringResource(R.string.settings_invite_owner_only),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
                             }
                             OutlinedTextField(
                                 value = syncUiState.inviteCode,
@@ -439,8 +473,12 @@ fun SettingsScreen(
                                         Text(stringResource(R.string.common_copy))
                                     }
                                 }
-                                InviteStatus.Accepted -> Text(
-                                    text = stringResource(R.string.settings_invite_accepted),
+                                is InviteStatus.Accepted -> Text(
+                                    text = stringResource(
+                                        R.string.settings_invite_accepted,
+                                        inviteStatus.petName,
+                                        inviteStatus.role.label(),
+                                    ),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
@@ -543,6 +581,13 @@ private fun Context.openAppNotificationSettings() {
     startActivity(intent)
 }
 
+@Composable
+private fun PetAccessRole.label(): String = when (this) {
+    PetAccessRole.Owner -> stringResource(R.string.settings_pet_role_owner)
+    PetAccessRole.Member -> stringResource(R.string.settings_pet_role_member)
+    PetAccessRole.Unknown -> stringResource(R.string.settings_pet_role_unknown)
+}
+
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
@@ -560,4 +605,16 @@ private fun SyncStatus.label(context: Context): String = when (this) {
     SyncStatus.RequiresBootstrap -> context.getString(R.string.settings_sync_requires_bootstrap)
     SyncStatus.NoServerPet -> context.getString(R.string.settings_sync_no_server_pet)
     is SyncStatus.Error -> message
+}
+
+private fun SyncStatus.allowsPetAccessRefresh(): Boolean = when (this) {
+    SyncStatus.Idle,
+    SyncStatus.Success,
+    SyncStatus.ForegroundSuccess -> true
+    SyncStatus.NotConfigured,
+    SyncStatus.Running,
+    SyncStatus.Conflicts,
+    SyncStatus.RequiresBootstrap,
+    SyncStatus.NoServerPet,
+    is SyncStatus.Error -> false
 }

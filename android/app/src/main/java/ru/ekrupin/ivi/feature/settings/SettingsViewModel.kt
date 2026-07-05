@@ -3,6 +3,10 @@ package ru.ekrupin.ivi.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
+import java.io.InterruptedIOException
+import java.net.SocketTimeoutException
+import java.time.LocalDateTime
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,7 +26,6 @@ import ru.ekrupin.ivi.data.sync.conflict.SyncConflictRepository
 import ru.ekrupin.ivi.data.sync.remote.SyncHttpException
 import ru.ekrupin.ivi.domain.model.ReminderSettings
 import ru.ekrupin.ivi.domain.repository.ReminderSettingsRepository
-import java.time.LocalDateTime
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -117,6 +120,22 @@ class SettingsViewModel @Inject constructor(
         appSyncRunner.triggerManualSync()
     }
 
+    fun refreshCurrentPetAccess() {
+        val current = _syncUiState.value
+        if (current.petAccess is PetAccessUiState.Loading || current.petAccess is PetAccessUiState.Known) return
+        viewModelScope.launch {
+            val session = authSessionManager.getSession()
+            if (!session.isAuthenticated) return@launch
+            _syncUiState.value = _syncUiState.value.copy(petAccess = PetAccessUiState.Loading)
+            try {
+                val access = petAccessRemoteDataSource.getCurrentPetAccess(session.baseUrl, session.accessToken)
+                _syncUiState.value = _syncUiState.value.copy(petAccess = access.toPetAccessUiState())
+            } catch (exception: Exception) {
+                _syncUiState.value = _syncUiState.value.copy(petAccess = PetAccessUiState.Unknown)
+            }
+        }
+    }
+
     fun publishLocalDataToServer() {
         appSyncRunner.triggerPublishLocalDataToServer()
     }
@@ -135,8 +154,17 @@ class SettingsViewModel @Inject constructor(
 
             _syncUiState.value = _syncUiState.value.copy(inviteStatus = InviteStatus.Loading)
             try {
-                val pet = petAccessRemoteDataSource.getCurrentPet(session.baseUrl, session.accessToken)
-                val invite = petAccessRemoteDataSource.createInvite(session.baseUrl, session.accessToken, pet.id)
+                val petAccess = when (val access = _syncUiState.value.petAccess) {
+                    is PetAccessUiState.Known -> access
+                    else -> petAccessRemoteDataSource.getCurrentPetAccess(session.baseUrl, session.accessToken)
+                        .toPetAccessUiState()
+                        .also { _syncUiState.value = _syncUiState.value.copy(petAccess = it) }
+                }
+                if (petAccess.role != PetAccessRole.Owner) {
+                    _syncUiState.value = _syncUiState.value.copy(inviteStatus = InviteStatus.Error("Код приглашения может создать только владелец питомца."))
+                    return@launch
+                }
+                val invite = petAccessRemoteDataSource.createInvite(session.baseUrl, session.accessToken, petAccess.petId)
                 _syncUiState.value = _syncUiState.value.copy(inviteStatus = InviteStatus.Created(invite.code))
             } catch (exception: Exception) {
                 _syncUiState.value = _syncUiState.value.copy(inviteStatus = InviteStatus.Error(exception.toInviteMessage("Не удалось создать приглашение")))
@@ -161,10 +189,11 @@ class SettingsViewModel @Inject constructor(
 
             _syncUiState.value = current.copy(inviteStatus = InviteStatus.Loading)
             try {
-                petAccessRemoteDataSource.acceptInvite(session.baseUrl, session.accessToken, code)
+                val access = petAccessRemoteDataSource.acceptInvite(session.baseUrl, session.accessToken, code)
                 _syncUiState.value = _syncUiState.value.copy(
                     inviteCode = "",
-                    inviteStatus = InviteStatus.Accepted,
+                    inviteStatus = InviteStatus.Accepted(access.pet.name, access.membership.role.toPetAccessRole()),
+                    petAccess = access.toPetAccessUiState(),
                 )
             } catch (exception: Exception) {
                 _syncUiState.value = _syncUiState.value.copy(inviteStatus = InviteStatus.Error(exception.toInviteMessage("Не удалось принять приглашение")))
@@ -222,14 +251,31 @@ data class SyncUiState(
     val conflictCount: Int = 0,
     val inviteCode: String = "",
     val inviteStatus: InviteStatus = InviteStatus.Idle,
+    val petAccess: PetAccessUiState = PetAccessUiState.Unknown,
 )
 
 sealed interface InviteStatus {
     data object Idle : InviteStatus
     data object Loading : InviteStatus
     data class Created(val code: String) : InviteStatus
-    data object Accepted : InviteStatus
+    data class Accepted(val petName: String, val role: PetAccessRole) : InviteStatus
     data class Error(val message: String) : InviteStatus
+}
+
+sealed interface PetAccessUiState {
+    data object Unknown : PetAccessUiState
+    data object Loading : PetAccessUiState
+    data class Known(
+        val petId: String,
+        val petName: String,
+        val role: PetAccessRole,
+    ) : PetAccessUiState
+}
+
+enum class PetAccessRole {
+    Owner,
+    Member,
+    Unknown,
 }
 
 sealed interface ConnectionStatus {
@@ -259,6 +305,7 @@ sealed interface SyncStatus {
 private fun SyncUiState.afterAuthResult(result: AuthSessionResult): SyncUiState = when (result) {
     is AuthSessionResult.Success -> copy(
         password = "",
+        petAccess = PetAccessUiState.Unknown,
         connectionStatus = ConnectionStatus.Connected(
             backendUrl = baseUrl.trim(),
             email = result.email,
@@ -301,5 +348,23 @@ private fun Exception.toInviteMessage(fallback: String): String {
             else -> fallback
         }
     }
+    if (this is SocketTimeoutException || this is InterruptedIOException || message.orEmpty().contains("timeout", ignoreCase = true)) {
+        return "Сервер не ответил вовремя. Проверьте подключение и попробуйте еще раз"
+    }
+    if (this is IOException) {
+        return "Не удалось подключиться к серверу. Проверьте адрес и сеть"
+    }
     return message ?: fallback
+}
+
+private fun ru.ekrupin.ivi.data.pet.remote.RemotePetAccessContext.toPetAccessUiState(): PetAccessUiState.Known = PetAccessUiState.Known(
+    petId = pet.id,
+    petName = pet.name,
+    role = membership.role.toPetAccessRole(),
+)
+
+private fun String.toPetAccessRole(): PetAccessRole = when (uppercase()) {
+    "OWNER" -> PetAccessRole.Owner
+    "MEMBER" -> PetAccessRole.Member
+    else -> PetAccessRole.Unknown
 }

@@ -9,9 +9,11 @@ import ru.ekrupin.ivi.backend.auth.toInviteResponse
 import ru.ekrupin.ivi.backend.auth.toPetMembershipResponse
 import ru.ekrupin.ivi.backend.auth.toPetResponse
 import ru.ekrupin.ivi.backend.common.error.ApiException
+import ru.ekrupin.ivi.backend.db.model.InviteRecord
 import ru.ekrupin.ivi.backend.db.model.InviteStatusEntity
 import ru.ekrupin.ivi.backend.db.model.MembershipRoleEntity
 import ru.ekrupin.ivi.backend.db.repository.InviteRepository
+import ru.ekrupin.ivi.backend.db.repository.InviteRepository.AcceptInviteMembershipResult
 import ru.ekrupin.ivi.backend.db.repository.PetMembershipRepository
 import ru.ekrupin.ivi.backend.db.repository.PetRepository
 import java.security.SecureRandom
@@ -60,39 +62,58 @@ class InviteService(
             ?: throw ApiException(HttpStatusCode.NotFound, "invite_not_found", "Приглашение не найдено")
 
         if (invite.status != InviteStatusEntity.PENDING) {
-            throw ApiException(HttpStatusCode.Conflict, "invite_not_active", "Приглашение уже использовано или недействительно")
+            return acceptedInviteResponseOrInactive(invite, currentUserId)
         }
 
         if (invite.expiresAt.isBefore(Instant.now())) {
             throw ApiException(HttpStatusCode.Conflict, "invite_expired", "Срок действия приглашения истек")
         }
 
-        val existingMembership = petMembershipRepository.findCurrentActiveMembership(currentUserId)
-        if (existingMembership != null) {
-            throw ApiException(
-                HttpStatusCode.Conflict,
-                "user_already_bound_to_pet",
-                "В текущей V1-модели пользователь уже привязан к питомцу",
-            )
+        val accepted = when (val result = inviteRepository.acceptAndCreateMembership(invite.id, currentUserId)) {
+            is AcceptInviteMembershipResult.Accepted -> result
+            AcceptInviteMembershipResult.AlreadyBound -> throw userAlreadyBoundToPet()
+            AcceptInviteMembershipResult.InviteNotActive -> {
+                val currentInvite = inviteRepository.findById(invite.id)
+                    ?: throw ApiException(HttpStatusCode.Conflict, "invite_not_active", "Приглашение уже использовано или недействительно")
+                if (currentInvite.status == InviteStatusEntity.PENDING && currentInvite.expiresAt.isBefore(Instant.now())) {
+                    throw ApiException(HttpStatusCode.Conflict, "invite_expired", "Срок действия приглашения истек")
+                }
+                return acceptedInviteResponseOrInactive(currentInvite, currentUserId)
+            }
         }
 
-        val pet = petRepository.findById(invite.petId)
+        val pet = petRepository.findById(accepted.invite.petId)
             ?: throw ApiException(HttpStatusCode.NotFound, "pet_not_found", "Питомец не найден")
 
-        val membership = petMembershipRepository.create(
-            petId = invite.petId,
-            userId = currentUserId,
-            role = MembershipRoleEntity.MEMBER,
-        )
-        val acceptedInvite = inviteRepository.accept(invite.id, currentUserId)
-            ?: throw ApiException(HttpStatusCode.Conflict, "invite_accept_failed", "Не удалось принять приглашение")
-
         return AcceptInviteResponse(
-            invite = acceptedInvite.toInviteResponse(),
+            invite = accepted.invite.toInviteResponse(),
             pet = pet.toPetResponse(),
-            membership = membership.toPetMembershipResponse(),
+            membership = accepted.membership.toPetMembershipResponse(),
         )
     }
+
+    private fun acceptedInviteResponseOrInactive(invite: InviteRecord, currentUserId: UUID): AcceptInviteResponse {
+        if (invite.status == InviteStatusEntity.ACCEPTED && invite.acceptedByUserId == currentUserId) {
+            val membership = petMembershipRepository.findActiveByPetAndUser(invite.petId, currentUserId)
+            if (membership != null) {
+                val pet = petRepository.findById(invite.petId)
+                    ?: throw ApiException(HttpStatusCode.NotFound, "pet_not_found", "Питомец не найден")
+                return AcceptInviteResponse(
+                    invite = invite.toInviteResponse(),
+                    pet = pet.toPetResponse(),
+                    membership = membership.toPetMembershipResponse(),
+                )
+            }
+        }
+
+        throw ApiException(HttpStatusCode.Conflict, "invite_not_active", "Приглашение уже использовано или недействительно")
+    }
+
+    private fun userAlreadyBoundToPet(): ApiException = ApiException(
+        HttpStatusCode.Conflict,
+        "user_already_bound_to_pet",
+        "В текущей V1-модели пользователь уже привязан к питомцу",
+    )
 
     private fun generateInviteCode(): String {
         val bytes = ByteArray(18)

@@ -86,6 +86,7 @@ data class CreatePetResponse(
 @Serializable
 data class CurrentPetResponse(
     val pet: PetResponse,
+    val membership: PetMembershipResponse,
 )
 
 @Serializable

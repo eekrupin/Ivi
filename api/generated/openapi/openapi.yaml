@@ -613,9 +613,12 @@ components:
       type: object
       required:
         - pet
+        - membership
       properties:
         pet:
           $ref: '#/components/schemas/Pet'
+        membership:
+          $ref: '#/components/schemas/PetMembership'
     CursorToken:
       type: string
       minLength: 1

@@ -2,7 +2,9 @@ package ru.ekrupin.ivi.backend.db.schema
 
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.javatime.timestampWithTimeZone
+import ru.ekrupin.ivi.backend.db.model.MembershipStatusEntity
 
 object PetMembershipsTable : UUIDTable("pet_memberships") {
     val petId = reference("pet_id", PetsTable, onDelete = ReferenceOption.CASCADE)
@@ -14,5 +16,8 @@ object PetMembershipsTable : UUIDTable("pet_memberships") {
 
     init {
         uniqueIndex("uq_pet_memberships_pet_id_user_id", petId, userId)
+        uniqueIndex("uq_pet_memberships_user_id_active", userId, filterCondition = {
+            status eq MembershipStatusEntity.ACTIVE.name
+        })
     }
 }

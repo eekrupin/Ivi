@@ -14,6 +14,7 @@ import ru.ekrupin.ivi.backend.db.model.MembershipRoleEntity
 import ru.ekrupin.ivi.backend.db.model.MembershipStatusEntity
 import ru.ekrupin.ivi.backend.db.repository.PetMembershipRepository
 import ru.ekrupin.ivi.backend.db.repository.PetRepository
+import ru.ekrupin.ivi.backend.db.repository.PetRepository.CreatePetWithOwnerResult
 import ru.ekrupin.ivi.backend.db.repository.UserRepository
 import java.util.UUID
 
@@ -39,23 +40,20 @@ class PetAccessService(
             throw ApiException(HttpStatusCode.BadRequest, "invalid_pet_name", "Имя питомца обязательно")
         }
 
-        if (petMembershipRepository.hasAnyActiveMembership(userId)) {
-            throw ApiException(
+        val result = petRepository.createWithOwnerMembership(
+            name = request.name.trim(),
+            birthDate = request.birthDate?.toLocalDateOrNull(),
+            ownerUserId = userId,
+        )
+
+        val pet = when (result) {
+            is CreatePetWithOwnerResult.Created -> result.pet
+            CreatePetWithOwnerResult.AlreadyBound -> throw ApiException(
                 status = HttpStatusCode.Conflict,
                 code = "pet_already_exists_for_user",
                 message = "В текущей V1-модели пользователь уже привязан к питомцу и не может создать второго",
             )
         }
-
-        val pet = petRepository.create(
-            name = request.name.trim(),
-            birthDate = request.birthDate?.toLocalDateOrNull(),
-        )
-        petMembershipRepository.create(
-            petId = pet.id,
-            userId = userId,
-            role = MembershipRoleEntity.OWNER,
-        )
         return CreatePetResponse(pet = pet.toPetResponse())
     }
 
@@ -66,7 +64,10 @@ class PetAccessService(
         val pet = petRepository.findById(membership.petId)
             ?: throw ApiException(HttpStatusCode.NotFound, "pet_not_found", "Питомец не найден")
 
-        return CurrentPetResponse(pet = pet.toPetResponse())
+        return CurrentPetResponse(
+            pet = pet.toPetResponse(),
+            membership = membership.toPetMembershipResponse(),
+        )
     }
 
     fun requireOwner(petId: UUID, userId: UUID) {

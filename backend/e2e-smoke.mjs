@@ -118,8 +118,22 @@ async function main() {
   const petId = createPet.json.pet.id
   step('create_pet', { status: 'passed', petId })
 
+  const createPetAgain = await api('/v1/pets', {
+    method: 'POST',
+    token: login1Tokens.accessToken,
+    body: { name: 'Иви E2E second', birthDate: '2023-05-10' },
+  })
+  expectStatus(createPetAgain, 409, 'create second pet for same user')
+  if (createPetAgain.json?.error?.code !== 'pet_already_exists_for_user') {
+    fail(`expected pet_already_exists_for_user for second pet, got ${JSON.stringify(createPetAgain.json)}`)
+  }
+  step('create_second_pet_same_user', { status: 'passed', statusCode: createPetAgain.status })
+
   const currentPet = await api('/v1/pets/current', { token: login1Tokens.accessToken })
   expectStatus(currentPet, 200, 'current pet')
+  if (currentPet.json.membership.role !== 'OWNER') {
+    fail(`current pet membership role mismatch: ${JSON.stringify(currentPet.json)}`)
+  }
   step('get_current_pet', { status: 'passed', petId: currentPet.json.pet.id })
 
   const createInvite = await api(`/v1/pets/${petId}/invites`, {
@@ -145,10 +159,101 @@ async function main() {
     body: { code: inviteCode },
   })
   expectStatus(acceptInvite, 200, 'accept invite')
+  if (acceptInvite.json.membership.role !== 'MEMBER') {
+    fail(`accept invite membership role mismatch: ${JSON.stringify(acceptInvite.json)}`)
+  }
   step('accept_invite', { status: 'passed', membershipId: acceptInvite.json.membership.id })
+
+  const acceptInviteAgain = await api('/v1/invites/accept', {
+    method: 'POST',
+    token: user2Tokens.accessToken,
+    body: { code: inviteCode },
+  })
+  expectStatus(acceptInviteAgain, 200, 'accept invite again by same user')
+  if (acceptInviteAgain.json.membership.role !== 'MEMBER') {
+    fail(`repeat accept invite membership role mismatch: ${JSON.stringify(acceptInviteAgain.json)}`)
+  }
+  step('accept_invite_again_same_user', { status: 'passed', membershipId: acceptInviteAgain.json.membership.id })
+
+  const user3 = {
+    email: randomEmail('user3'),
+    password: 'password123',
+    displayName: 'Пользователь Три',
+  }
+  const user4 = {
+    email: randomEmail('user4'),
+    password: 'password123',
+    displayName: 'Пользователь Четыре',
+  }
+  const register3 = await api('/v1/auth/register', {
+    method: 'POST',
+    body: user3,
+  })
+  expectStatus(register3, 200, 'register user3')
+  const user3Tokens = register3.json.tokens
+  step('register_user3', { status: 'passed', userId: register3.json.user.id })
+
+  const acceptInviteByOtherUser = await api('/v1/invites/accept', {
+    method: 'POST',
+    token: user3Tokens.accessToken,
+    body: { code: inviteCode },
+  })
+  expectStatus(acceptInviteByOtherUser, 409, 'accept invite by other user after accepted')
+  if (acceptInviteByOtherUser.json?.error?.code !== 'invite_not_active') {
+    fail(`expected invite_not_active for other user, got ${JSON.stringify(acceptInviteByOtherUser.json)}`)
+  }
+  step('accept_invite_other_user_after_accepted', { status: 'passed', statusCode: acceptInviteByOtherUser.status })
+
+  const createPetUser3 = await api('/v1/pets', {
+    method: 'POST',
+    token: user3Tokens.accessToken,
+    body: { name: 'Иви E2E user3', birthDate: '2024-01-15' },
+  })
+  expectStatus(createPetUser3, 201, 'create pet user3')
+  const petIdUser3 = createPetUser3.json.pet.id
+  step('create_pet_user3', { status: 'passed', petId: petIdUser3 })
+
+  const createInviteUser3 = await api(`/v1/pets/${petIdUser3}/invites`, {
+    method: 'POST',
+    token: user3Tokens.accessToken,
+    body: { expiresInHours: 24 },
+  })
+  expectStatus(createInviteUser3, 201, 'create invite user3')
+  const inviteCodeUser3 = createInviteUser3.json.invite.code
+  step('create_invite_user3', { status: 'passed', inviteId: createInviteUser3.json.invite.id })
+
+  const register4 = await api('/v1/auth/register', {
+    method: 'POST',
+    body: user4,
+  })
+  expectStatus(register4, 200, 'register user4')
+  const user4Tokens = register4.json.tokens
+  step('register_user4', { status: 'passed', userId: register4.json.user.id })
+
+  const createPetUser4 = await api('/v1/pets', {
+    method: 'POST',
+    token: user4Tokens.accessToken,
+    body: { name: 'Иви E2E user4', birthDate: '2024-02-20' },
+  })
+  expectStatus(createPetUser4, 201, 'create pet user4')
+  step('create_pet_user4', { status: 'passed', petId: createPetUser4.json.pet.id })
+
+  const acceptInviteByAlreadyBoundUser = await api('/v1/invites/accept', {
+    method: 'POST',
+    token: user4Tokens.accessToken,
+    body: { code: inviteCodeUser3 },
+  })
+  expectStatus(acceptInviteByAlreadyBoundUser, 409, 'accept invite by already bound user')
+  if (acceptInviteByAlreadyBoundUser.json?.error?.code !== 'user_already_bound_to_pet') {
+    fail(`expected user_already_bound_to_pet for already bound user, got ${JSON.stringify(acceptInviteByAlreadyBoundUser.json)}`)
+  }
+  step('accept_invite_already_bound_user', { status: 'passed', statusCode: acceptInviteByAlreadyBoundUser.status })
 
   const user2CurrentPet = await api('/v1/pets/current', { token: user2Tokens.accessToken })
   expectStatus(user2CurrentPet, 200, 'user2 current pet')
+  if (user2CurrentPet.json.membership.role !== 'MEMBER') {
+    fail(`user2 current pet membership role mismatch: ${JSON.stringify(user2CurrentPet.json)}`)
+  }
   step('user2_current_pet', { status: 'passed', petId: user2CurrentPet.json.pet.id })
 
   const bootstrap1 = await api('/v1/sync/bootstrap', { token: login1Tokens.accessToken })
