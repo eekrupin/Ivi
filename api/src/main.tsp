@@ -34,6 +34,10 @@ scalar InviteCode extends string;
 @maxLength(160)
 scalar PhotoRevision extends string;
 
+@minValue(0)
+@maxValue(4294967295)
+scalar ArgbColor extends int64;
+
 @minLength(1)
 @maxLength(256)
 scalar ErrorCode extends string;
@@ -165,7 +169,7 @@ model EventType extends SyncRecordBase {
   category: EventCategory;
   defaultDurationDays?: int32 | null;
   isActive: boolean;
-  colorArgb?: int32 | null;
+  colorArgb?: ArgbColor | null;
   iconKey?: string | null;
   createdAt: utcDateTime;
 }
@@ -251,6 +255,27 @@ model CurrentPetResponse {
   membership: PetMembership;
 }
 
+model LeavePetOptionsResponse {
+  @statusCode statusCode: 200;
+  pet: Pet;
+  membership: PetMembership;
+  transferCandidates: UserProfile[];
+  canDeletePet: boolean;
+}
+
+model LeavePetRequest {
+  transferOwnerToUserId?: Uuid | null;
+  deletePet?: boolean;
+}
+
+model LeavePetResponse {
+  @statusCode statusCode: 200;
+  membership: PetMembership;
+  pet?: Pet | null;
+  newOwnerMembership?: PetMembership | null;
+  action: "LEFT" | "TRANSFERRED_OWNERSHIP" | "DELETED_PET";
+}
+
 model CreatePetResponse {
   @statusCode statusCode: 201;
   pet: Pet;
@@ -328,7 +353,7 @@ model EventTypeWriteModel {
   category: EventCategory;
   defaultDurationDays?: int32 | null;
   isActive: boolean;
-  colorArgb?: int32 | null;
+  colorArgb?: ArgbColor | null;
   iconKey?: string | null;
 }
 
@@ -503,6 +528,14 @@ namespace PetsApi {
   @get
   @route("/current")
   op getCurrentPet(): CurrentPetResponse | UnauthorizedError | NotFoundError;
+
+  @get
+  @route("/current/leave-options")
+  op getCurrentPetLeaveOptions(): LeavePetOptionsResponse | UnauthorizedError | NotFoundError;
+
+  @post
+  @route("/current/leave")
+  op leaveCurrentPet(@body body?: LeavePetRequest): LeavePetResponse | UnauthorizedError | NotFoundError | ConflictError;
 }
 
 @tag("Invites")

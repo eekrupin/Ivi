@@ -69,6 +69,7 @@ class LocalPetEventRepository @Inject constructor(
         val now = LocalDateTime.now()
         database.withTransaction {
             val deleted = existing.copy(
+                remoteId = existing.remoteId.normalizedRemoteId(),
                 deletedAt = now,
                 updatedAt = now,
                 syncState = SyncState.PENDING_UPLOAD,
@@ -78,4 +79,11 @@ class LocalPetEventRepository @Inject constructor(
         }
         reminderScheduler.refreshAll()
     }
+
+    private fun String?.normalizedRemoteId(): String = if (isValidUuid()) this!! else UUID.randomUUID().toString()
+
+    private fun String?.isValidUuid(): Boolean = !isNullOrBlank() && runCatching { UUID.fromString(this) }
+        .getOrNull()
+        ?.toString()
+        ?.equals(this, ignoreCase = true) == true
 }

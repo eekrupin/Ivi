@@ -63,6 +63,7 @@ fun SettingsScreen(
     var secondDays by remember { mutableStateOf("2") }
     var firstDaysError by remember { mutableStateOf(false) }
     var secondDaysError by remember { mutableStateOf(false) }
+    var previousSyncStatus by remember { mutableStateOf(syncUiState.status) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -80,10 +81,13 @@ fun SettingsScreen(
     }
 
     LaunchedEffect(syncUiState.isConnected, syncUiState.status) {
+        val isSuccessfulSync = syncUiState.status.allowsForcedPetAccessRefresh()
+        val isNewSuccessfulSync = isSuccessfulSync && previousSyncStatus != syncUiState.status
+        previousSyncStatus = syncUiState.status
         val shouldRefreshPetAccess = syncUiState.isConnected &&
-            syncUiState.petAccess is PetAccessUiState.Unknown &&
-            syncUiState.status.allowsPetAccessRefresh()
-        if (shouldRefreshPetAccess) viewModel.refreshCurrentPetAccess()
+            ((syncUiState.petAccess is PetAccessUiState.Unknown && syncUiState.status.allowsPetAccessRefresh()) ||
+                (syncUiState.petAccess is PetAccessUiState.NoServerPet && isNewSuccessfulSync))
+        if (shouldRefreshPetAccess) viewModel.refreshCurrentPetAccess(force = isNewSuccessfulSync)
     }
 
     val notificationStatusVersion = refreshTick
@@ -412,6 +416,10 @@ fun SettingsScreen(
                                     text = stringResource(R.string.settings_pet_access_loading),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
+                                PetAccessUiState.NoServerPet -> Text(
+                                    text = stringResource(R.string.settings_pet_access_no_server_pet),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
                                 is PetAccessUiState.Known -> {
                                     Text(
                                         text = stringResource(R.string.settings_pet_access_pet, petAccess.petName),
@@ -431,11 +439,25 @@ fun SettingsScreen(
                                 ) {
                                     Text(stringResource(R.string.settings_invite_create))
                                 }
+                                OutlinedButton(
+                                    onClick = viewModel::leaveSharedPet,
+                                    enabled = syncUiState.status != SyncStatus.Running && syncUiState.leavePetStatus != LeavePetStatus.Loading,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(stringResource(R.string.settings_leave_owner_pet))
+                                }
                             } else if ((syncUiState.petAccess as? PetAccessUiState.Known)?.role == PetAccessRole.Member) {
                                 Text(
                                     text = stringResource(R.string.settings_invite_owner_only),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
+                                OutlinedButton(
+                                    onClick = viewModel::leaveSharedPet,
+                                    enabled = syncUiState.status != SyncStatus.Running && syncUiState.leavePetStatus != LeavePetStatus.Loading,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(stringResource(R.string.settings_leave_shared_pet))
+                                }
                             }
                             OutlinedTextField(
                                 value = syncUiState.inviteCode,
@@ -446,10 +468,56 @@ fun SettingsScreen(
                             )
                             OutlinedButton(
                                 onClick = viewModel::acceptInvite,
-                                enabled = syncUiState.inviteCode.isNotBlank() && syncUiState.inviteStatus != InviteStatus.Loading,
+                                enabled = syncUiState.inviteCode.isNotBlank() && syncUiState.inviteStatus != InviteStatus.Loading && syncUiState.leavePetStatus != LeavePetStatus.Loading,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text(stringResource(R.string.settings_invite_accept))
+                            }
+                            when (val leavePetStatus = syncUiState.leavePetStatus) {
+                                LeavePetStatus.Idle -> Unit
+                                LeavePetStatus.Loading -> Text(
+                                    text = stringResource(R.string.settings_leave_shared_pet_loading),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                LeavePetStatus.Left -> Text(
+                                    text = stringResource(R.string.settings_leave_shared_pet_success),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                is LeavePetStatus.TransferRequired -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(
+                                        text = stringResource(R.string.settings_leave_owner_transfer_required),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                    leavePetStatus.candidates.forEach { candidate ->
+                                        OutlinedButton(
+                                            onClick = { viewModel.transferOwnerAndLeave(candidate.id) },
+                                            enabled = syncUiState.status != SyncStatus.Running,
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Text(candidate.label())
+                                        }
+                                    }
+                                }
+                                LeavePetStatus.DeletePetConfirmation -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(
+                                        text = stringResource(R.string.settings_leave_owner_delete_warning),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                    OutlinedButton(
+                                        onClick = viewModel::deletePetAndLeave,
+                                        enabled = syncUiState.status != SyncStatus.Running,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text(stringResource(R.string.settings_leave_owner_delete_confirm))
+                                    }
+                                }
+                                is LeavePetStatus.Error -> Text(
+                                    text = leavePetStatus.message,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
                             }
                             when (val inviteStatus = syncUiState.inviteStatus) {
                                 InviteStatus.Idle -> Unit
@@ -588,6 +656,8 @@ private fun PetAccessRole.label(): String = when (this) {
     PetAccessRole.Unknown -> stringResource(R.string.settings_pet_role_unknown)
 }
 
+private fun PetOwnerTransferCandidate.label(): String = displayName?.takeIf { it.isNotBlank() }?.let { "$it ($email)" } ?: email
+
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
@@ -612,6 +682,18 @@ private fun SyncStatus.allowsPetAccessRefresh(): Boolean = when (this) {
     SyncStatus.Success,
     SyncStatus.ForegroundSuccess -> true
     SyncStatus.NotConfigured,
+    SyncStatus.Running,
+    SyncStatus.Conflicts,
+    SyncStatus.RequiresBootstrap,
+    SyncStatus.NoServerPet,
+    is SyncStatus.Error -> false
+}
+
+private fun SyncStatus.allowsForcedPetAccessRefresh(): Boolean = when (this) {
+    SyncStatus.Success,
+    SyncStatus.ForegroundSuccess -> true
+    SyncStatus.NotConfigured,
+    SyncStatus.Idle,
     SyncStatus.Running,
     SyncStatus.Conflicts,
     SyncStatus.RequiresBootstrap,

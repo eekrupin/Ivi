@@ -291,7 +291,7 @@ async function main() {
             category: 'TICK_PROTECTION',
             defaultDurationDays: 30,
             isActive: true,
-            colorArgb: 16755200,
+            colorArgb: 0xFFC98656,
             iconKey: 'pill',
           },
         },
@@ -304,6 +304,38 @@ async function main() {
   }
   const eventTypeVersion1 = pushEventType.json.accepted[0].version
   step('push_event_type', { status: 'passed', version: eventTypeVersion1, cursor: pushEventType.json.cursor })
+
+  const pushEventTypeInvalidColor = await api('/v1/sync/push', {
+    method: 'POST',
+    token: login1Tokens.accessToken,
+    body: {
+      deviceId: 'e2e-user1-device',
+      lastKnownCursor: pushEventType.json.cursor,
+      mutations: [
+        {
+          clientMutationId: 'mut-event-type-invalid-color',
+          entityId: createUuid(),
+          baseVersion: null,
+          entityType: 'EVENT_TYPE',
+          operation: 'UPSERT',
+          payload: {
+            petId,
+            name: 'E2E неверный цвет',
+            category: 'TICK_PROTECTION',
+            defaultDurationDays: 30,
+            isActive: true,
+            colorArgb: 0x100000000,
+            iconKey: 'pill',
+          },
+        },
+      ],
+    },
+  })
+  expectStatus(pushEventTypeInvalidColor, 400, 'push event type invalid color')
+  if (pushEventTypeInvalidColor.json?.error?.code !== 'invalid_mutation_payload') {
+    fail(`expected invalid_mutation_payload for out-of-range color, got ${JSON.stringify(pushEventTypeInvalidColor.json)}`)
+  }
+  step('push_event_type_invalid_color', { status: 'passed', statusCode: pushEventTypeInvalidColor.status })
 
   const changesForUser2EventType = await api(`/v1/sync/changes?cursor=${encodeURIComponent(bootstrapCursor)}`, {
     token: user2Tokens.accessToken,
@@ -534,6 +566,199 @@ async function main() {
     issue('important', 'Старый refresh token повторно не был отклонён', oldRefreshReuse.json)
   }
   step('reuse_old_refresh_token', { status: oldRefreshReuse.status === 401 ? 'passed' : 'failed', statusCode: oldRefreshReuse.status })
+
+  const ownerChangesBeforeLeave = await api(`/v1/sync/changes?cursor=${encodeURIComponent(replayAfterConflict.json.cursor)}`, {
+    token: login1Tokens.accessToken,
+  })
+  expectStatus(ownerChangesBeforeLeave, 200, 'owner changes before member leave')
+  const ownerCursorBeforeLeave = ownerChangesBeforeLeave.json.cursor
+  step('owner_changes_before_member_leave', { status: 'passed', cursor: ownerCursorBeforeLeave })
+
+  const user1OwnerLeaveOptions = await api('/v1/pets/current/leave-options', {
+    token: login1Tokens.accessToken,
+  })
+  expectStatus(user1OwnerLeaveOptions, 200, 'owner user1 leave options')
+  if (!user1OwnerLeaveOptions.json.transferCandidates.some((candidate) => candidate.id === register2.json.user.id)) {
+    fail(`expected user2 in owner transfer candidates, got ${JSON.stringify(user1OwnerLeaveOptions.json.transferCandidates)}`)
+  }
+  if (user1OwnerLeaveOptions.json.canDeletePet !== false) {
+    fail(`expected canDeletePet=false with active member, got ${JSON.stringify(user1OwnerLeaveOptions.json)}`)
+  }
+  step('owner_leave_options_with_member', { status: 'passed', transferCandidates: user1OwnerLeaveOptions.json.transferCandidates.length })
+
+  const user1OwnerLeave = await api('/v1/pets/current/leave', {
+    method: 'POST',
+    token: login1Tokens.accessToken,
+  })
+  expectStatus(user1OwnerLeave, 409, 'owner user1 leave current pet')
+  if (user1OwnerLeave.json?.error?.code !== 'owner_leave_requires_action') {
+    fail(`expected owner_leave_requires_action for owner leave, got ${JSON.stringify(user1OwnerLeave.json)}`)
+  }
+  step('owner_leave_current_pet_requires_action', { status: 'passed', statusCode: user1OwnerLeave.status })
+
+  const user1OwnerDeleteWithMember = await api('/v1/pets/current/leave', {
+    method: 'POST',
+    token: login1Tokens.accessToken,
+    body: { deletePet: true },
+  })
+  expectStatus(user1OwnerDeleteWithMember, 409, 'owner user1 delete pet with member')
+  if (user1OwnerDeleteWithMember.json?.error?.code !== 'owner_delete_requires_no_members') {
+    fail(`expected owner_delete_requires_no_members for owner delete with member, got ${JSON.stringify(user1OwnerDeleteWithMember.json)}`)
+  }
+  step('owner_delete_with_member_forbidden', { status: 'passed', statusCode: user1OwnerDeleteWithMember.status })
+
+  const user2Leave = await api('/v1/pets/current/leave', {
+    method: 'POST',
+    token: user2Tokens.accessToken,
+  })
+  expectStatus(user2Leave, 200, 'user2 member leave current pet')
+  if (user2Leave.json?.membership?.status !== 'REVOKED') {
+    fail(`expected REVOKED membership after leave, got ${JSON.stringify(user2Leave.json)}`)
+  }
+  step('user2_leave_current_pet', { status: 'passed', membershipId: user2Leave.json.membership.id })
+
+  const ownerChangesAfterLeave = await api(`/v1/sync/changes?cursor=${encodeURIComponent(ownerCursorBeforeLeave)}`, {
+    token: login1Tokens.accessToken,
+  })
+  expectStatus(ownerChangesAfterLeave, 200, 'owner changes after member leave')
+  const revokedMembershipChange = ownerChangesAfterLeave.json.changes.memberships.find(
+    (membership) => membership.id === user2Leave.json.membership.id,
+  )
+  if (revokedMembershipChange?.status !== 'REVOKED') {
+    fail(`expected owner changes to include REVOKED user2 membership, got ${JSON.stringify(ownerChangesAfterLeave.json.changes.memberships)}`)
+  }
+  step('owner_changes_include_revoked_member', { status: 'passed', membershipId: revokedMembershipChange.id })
+
+  const user2CurrentAfterLeave = await api('/v1/pets/current', { token: user2Tokens.accessToken })
+  expectStatus(user2CurrentAfterLeave, 404, 'user2 current pet after leave')
+  if (user2CurrentAfterLeave.json?.error?.code !== 'current_pet_not_found') {
+    fail(`expected current_pet_not_found after leave, got ${JSON.stringify(user2CurrentAfterLeave.json)}`)
+  }
+  step('user2_current_pet_after_leave', { status: 'passed', statusCode: user2CurrentAfterLeave.status })
+
+  const createRejoinInvite = await api(`/v1/pets/${petId}/invites`, {
+    method: 'POST',
+    token: login1Tokens.accessToken,
+    body: { expiresInHours: 24 },
+  })
+  expectStatus(createRejoinInvite, 201, 'create rejoin invite')
+  const rejoinInviteCode = createRejoinInvite.json.invite.code
+  step('create_rejoin_invite', { status: 'passed', inviteId: createRejoinInvite.json.invite.id })
+
+  const acceptRejoinInvite = await api('/v1/invites/accept', {
+    method: 'POST',
+    token: user2Tokens.accessToken,
+    body: { code: rejoinInviteCode },
+  })
+  expectStatus(acceptRejoinInvite, 200, 'accept rejoin invite')
+  if (acceptRejoinInvite.json.membership.id !== user2Leave.json.membership.id) {
+    fail(`expected rejoin to reactivate existing membership ${user2Leave.json.membership.id}, got ${JSON.stringify(acceptRejoinInvite.json.membership)}`)
+  }
+  if (acceptRejoinInvite.json.membership.status !== 'ACTIVE' || acceptRejoinInvite.json.membership.role !== 'MEMBER') {
+    fail(`expected ACTIVE MEMBER after rejoin, got ${JSON.stringify(acceptRejoinInvite.json.membership)}`)
+  }
+  step('accept_rejoin_invite_same_pet', { status: 'passed', membershipId: acceptRejoinInvite.json.membership.id })
+
+  const ownerTransferToUser2 = await api('/v1/pets/current/leave', {
+    method: 'POST',
+    token: login1Tokens.accessToken,
+    body: { transferOwnerToUserId: register2.json.user.id },
+  })
+  expectStatus(ownerTransferToUser2, 200, 'owner user1 transfer ownership to user2 and leave')
+  if (ownerTransferToUser2.json?.action !== 'TRANSFERRED_OWNERSHIP') {
+    fail(`expected TRANSFERRED_OWNERSHIP action, got ${JSON.stringify(ownerTransferToUser2.json)}`)
+  }
+  if (ownerTransferToUser2.json?.membership?.status !== 'REVOKED') {
+    fail(`expected revoked old owner membership, got ${JSON.stringify(ownerTransferToUser2.json)}`)
+  }
+  if (ownerTransferToUser2.json?.newOwnerMembership?.userId !== register2.json.user.id || ownerTransferToUser2.json?.newOwnerMembership?.role !== 'OWNER') {
+    fail(`expected user2 OWNER membership after transfer, got ${JSON.stringify(ownerTransferToUser2.json)}`)
+  }
+  step('owner_transfer_to_user2', { status: 'passed', newOwnerMembershipId: ownerTransferToUser2.json.newOwnerMembership.id })
+
+  const user1CurrentAfterTransfer = await api('/v1/pets/current', { token: login1Tokens.accessToken })
+  expectStatus(user1CurrentAfterTransfer, 404, 'user1 current pet after owner transfer')
+  if (user1CurrentAfterTransfer.json?.error?.code !== 'current_pet_not_found') {
+    fail(`expected current_pet_not_found for old owner after transfer, got ${JSON.stringify(user1CurrentAfterTransfer.json)}`)
+  }
+  step('old_owner_current_pet_after_transfer', { status: 'passed', statusCode: user1CurrentAfterTransfer.status })
+
+  const user1AcceptsAnotherInvite = await api('/v1/invites/accept', {
+    method: 'POST',
+    token: login1Tokens.accessToken,
+    body: { code: inviteCodeUser3 },
+  })
+  expectStatus(user1AcceptsAnotherInvite, 200, 'old owner accepts another invite after transfer')
+  step('old_owner_accepts_another_invite_after_transfer', { status: 'passed', membershipId: user1AcceptsAnotherInvite.json.membership.id })
+
+  const createInviteBeforeDelete = await api(`/v1/pets/${petId}/invites`, {
+    method: 'POST',
+    token: user2Tokens.accessToken,
+    body: { expiresInHours: 24 },
+  })
+  expectStatus(createInviteBeforeDelete, 201, 'create invite before solo owner delete')
+  const inviteCodeBeforeDelete = createInviteBeforeDelete.json.invite.code
+  step('create_invite_before_solo_delete', { status: 'passed', inviteId: createInviteBeforeDelete.json.invite.id })
+
+  const user2LeaveAfterRejoin = await api('/v1/pets/current/leave', {
+    method: 'POST',
+    token: user2Tokens.accessToken,
+    body: { deletePet: true },
+  })
+  expectStatus(user2LeaveAfterRejoin, 200, 'user2 solo owner delete pet after transfer')
+  if (user2LeaveAfterRejoin.json?.action !== 'DELETED_PET') {
+    fail(`expected DELETED_PET action after solo owner delete, got ${JSON.stringify(user2LeaveAfterRejoin.json)}`)
+  }
+  if (user2LeaveAfterRejoin.json?.membership?.status !== 'REVOKED' || !user2LeaveAfterRejoin.json?.pet?.deletedAt) {
+    fail(`expected revoked membership and deleted pet after solo owner delete, got ${JSON.stringify(user2LeaveAfterRejoin.json)}`)
+  }
+  step('user2_delete_solo_pet_after_transfer', { status: 'passed', membershipId: user2LeaveAfterRejoin.json.membership.id })
+
+  const user2CurrentAfterSoloDelete = await api('/v1/pets/current', { token: user2Tokens.accessToken })
+  expectStatus(user2CurrentAfterSoloDelete, 404, 'user2 current pet after solo owner delete')
+  if (user2CurrentAfterSoloDelete.json?.error?.code !== 'current_pet_not_found') {
+    fail(`expected current_pet_not_found after solo owner delete, got ${JSON.stringify(user2CurrentAfterSoloDelete.json)}`)
+  }
+  step('user2_current_pet_after_solo_delete', { status: 'passed', statusCode: user2CurrentAfterSoloDelete.status })
+
+  const user5 = {
+    email: randomEmail('user5'),
+    password: 'password123',
+    displayName: 'Пользователь Пять',
+  }
+  const register5 = await api('/v1/auth/register', {
+    method: 'POST',
+    body: user5,
+  })
+  expectStatus(register5, 200, 'register user5')
+  const user5Tokens = register5.json.tokens
+  step('register_user5', { status: 'passed', userId: register5.json.user.id })
+
+  const acceptInviteAfterOwnerDelete = await api('/v1/invites/accept', {
+    method: 'POST',
+    token: user5Tokens.accessToken,
+    body: { code: inviteCodeBeforeDelete },
+  })
+  expectStatus(acceptInviteAfterOwnerDelete, 409, 'accept stale invite after owner delete')
+  if (!['invite_not_active', 'invite_pet_not_available'].includes(acceptInviteAfterOwnerDelete.json?.error?.code)) {
+    fail(`expected stale invite rejection after owner delete, got ${JSON.stringify(acceptInviteAfterOwnerDelete.json)}`)
+  }
+  step('accept_stale_invite_after_owner_delete', { status: 'passed', statusCode: acceptInviteAfterOwnerDelete.status })
+
+  const user5CurrentAfterStaleInvite = await api('/v1/pets/current', { token: user5Tokens.accessToken })
+  expectStatus(user5CurrentAfterStaleInvite, 404, 'user5 current pet after stale invite')
+  if (user5CurrentAfterStaleInvite.json?.error?.code !== 'current_pet_not_found') {
+    fail(`expected current_pet_not_found after stale invite rejection, got ${JSON.stringify(user5CurrentAfterStaleInvite.json)}`)
+  }
+  step('user5_current_pet_after_stale_invite', { status: 'passed', statusCode: user5CurrentAfterStaleInvite.status })
+
+  const createPetUser2AfterLeave = await api('/v1/pets', {
+    method: 'POST',
+    token: user2Tokens.accessToken,
+    body: { name: 'Иви E2E user2 после выхода', birthDate: '2024-03-05' },
+  })
+  expectStatus(createPetUser2AfterLeave, 201, 'create pet user2 after leave')
+  step('create_pet_user2_after_leave', { status: 'passed', petId: createPetUser2AfterLeave.json.pet.id })
 
   report.facts = {
     petId,

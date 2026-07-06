@@ -3,6 +3,7 @@ package ru.ekrupin.ivi.backend.pet
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.request.receive
+import io.ktor.server.request.receiveNullable
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
@@ -21,6 +22,14 @@ fun Route.registerPetRoutes(petAccessService: PetAccessService) {
         get("/current") {
             val currentUser = call.requireAuthenticatedUser()
             call.respond(petAccessService.getCurrentPet(currentUser.userId))
+        }
+        get("/current/leave-options") {
+            val currentUser = call.requireAuthenticatedUser()
+            call.respond(petAccessService.getCurrentPetLeaveOptions(currentUser.userId))
+        }
+        post("/current/leave") {
+            val currentUser = call.requireAuthenticatedUser()
+            call.respond(petAccessService.leaveCurrentPet(currentUser.userId, call.receiveNullable()))
         }
     }
 }

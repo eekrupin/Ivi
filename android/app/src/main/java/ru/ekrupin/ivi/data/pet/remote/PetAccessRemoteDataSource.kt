@@ -27,10 +27,30 @@ data class RemotePetAccessContext(
     val membership: RemotePetMembership,
 )
 
+data class RemotePetUserProfile(
+    val id: String,
+    val email: String,
+    val displayName: String?,
+)
+
+data class RemoteLeavePetOptions(
+    val pet: RemotePetAccessPet,
+    val membership: RemotePetMembership,
+    val transferCandidates: List<RemotePetUserProfile>,
+    val canDeletePet: Boolean,
+)
+
 interface PetAccessRemoteDataSource {
     suspend fun getCurrentPet(baseUrl: String, accessToken: String): RemotePetAccessPet
     suspend fun getCurrentPetAccess(baseUrl: String, accessToken: String): RemotePetAccessContext
+    suspend fun getCurrentPetLeaveOptions(baseUrl: String, accessToken: String): RemoteLeavePetOptions
     suspend fun createPet(baseUrl: String, accessToken: String, name: String, birthDate: LocalDate?): RemotePetAccessPet
     suspend fun createInvite(baseUrl: String, accessToken: String, petId: String): RemotePetInvite
     suspend fun acceptInvite(baseUrl: String, accessToken: String, code: String): RemotePetAccessContext
+    suspend fun leaveCurrentPet(
+        baseUrl: String,
+        accessToken: String,
+        transferOwnerToUserId: String? = null,
+        deletePet: Boolean = false,
+    ): RemotePetMembership
 }

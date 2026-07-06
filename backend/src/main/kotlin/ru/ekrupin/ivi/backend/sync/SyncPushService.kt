@@ -1,7 +1,9 @@
 package ru.ekrupin.ivi.backend.sync
 
 import io.ktor.http.HttpStatusCode
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import ru.ekrupin.ivi.backend.common.error.ApiException
@@ -20,6 +22,7 @@ import ru.ekrupin.ivi.backend.db.repository.UpdateWeightEntryCommand
 import ru.ekrupin.ivi.backend.db.repository.WeightEntryRepository
 import java.time.Instant
 import java.time.LocalDate
+import java.time.format.DateTimeParseException
 import java.util.UUID
 
 class SyncPushService(
@@ -74,8 +77,10 @@ class SyncPushService(
         when (mutation.operation) {
             "UPSERT" -> {
                 val payload = mutation.payload ?: throw ApiException(HttpStatusCode.BadRequest, "missing_mutation_payload", "Для EVENT_TYPE UPSERT обязателен payload")
-                val model = json.decodeFromJsonElement<SyncEventTypeWriteModel>(payload)
-                val petId = model.petId.toUuidOrBadRequest("payload.petId")
+                val model = decodeMutationPayload<SyncEventTypeWriteModel>(payload)
+                val petId = model.petId.toPayloadUuidOrInvalidPayload()
+                val category = model.category.toEventCategoryOrInvalidPayload()
+                val colorArgb = model.colorArgb.toSignedArgbOrInvalidPayload()
                 if (petId != currentPetId) {
                     throw ApiException(HttpStatusCode.Forbidden, "push_pet_forbidden", "Нельзя пушить изменения для чужого питомца")
                 }
@@ -87,10 +92,10 @@ class SyncPushService(
                         command = CreateEventTypeCommand(
                             petId = currentPetId,
                             name = model.name,
-                            category = EventCategoryEntity.valueOf(model.category),
+                            category = category,
                             defaultDurationDays = model.defaultDurationDays,
                             isActive = model.isActive,
-                            colorArgb = model.colorArgb,
+                            colorArgb = colorArgb,
                             iconKey = model.iconKey,
                         ),
                     )
@@ -107,10 +112,10 @@ class SyncPushService(
                         id = entityId,
                         command = UpdateEventTypeCommand(
                             name = model.name,
-                            category = EventCategoryEntity.valueOf(model.category),
+                            category = category,
                             defaultDurationDays = model.defaultDurationDays,
                             isActive = model.isActive,
-                            colorArgb = model.colorArgb,
+                            colorArgb = colorArgb,
                             iconKey = model.iconKey,
                         ),
                     ) ?: error("Updated event type not found")
@@ -149,9 +154,12 @@ class SyncPushService(
         when (mutation.operation) {
             "UPSERT" -> {
                 val payload = mutation.payload ?: throw ApiException(HttpStatusCode.BadRequest, "missing_mutation_payload", "Для PET_EVENT UPSERT обязателен payload")
-                val model = json.decodeFromJsonElement<SyncPetEventWriteModel>(payload)
-                val petId = model.petId.toUuidOrBadRequest("payload.petId")
-                val eventTypeId = model.eventTypeId.toUuidOrBadRequest("payload.eventTypeId")
+                val model = decodeMutationPayload<SyncPetEventWriteModel>(payload)
+                val petId = model.petId.toPayloadUuidOrInvalidPayload()
+                val eventTypeId = model.eventTypeId.toPayloadUuidOrInvalidPayload()
+                val eventDate = model.eventDate.toLocalDateOrInvalidPayload()
+                val dueDate = model.dueDate?.toLocalDateOrInvalidPayload()
+                val status = model.status.toPetEventStatusOrInvalidPayload()
                 if (petId != currentPetId) {
                     throw ApiException(HttpStatusCode.Forbidden, "push_pet_forbidden", "Нельзя пушить изменения для чужого питомца")
                 }
@@ -168,11 +176,11 @@ class SyncPushService(
                         command = CreatePetEventCommand(
                             petId = currentPetId,
                             eventTypeId = eventTypeId,
-                            eventDate = LocalDate.parse(model.eventDate),
-                            dueDate = model.dueDate?.let(LocalDate::parse),
+                            eventDate = eventDate,
+                            dueDate = dueDate,
                             comment = model.comment,
                             notificationsEnabled = model.notificationsEnabled,
-                            status = PetEventStatusEntity.valueOf(model.status),
+                            status = status,
                         ),
                     )
                     accepted += mutation.toAccepted(created.version)
@@ -188,11 +196,11 @@ class SyncPushService(
                         id = entityId,
                         command = UpdatePetEventCommand(
                             eventTypeId = eventTypeId,
-                            eventDate = LocalDate.parse(model.eventDate),
-                            dueDate = model.dueDate?.let(LocalDate::parse),
+                            eventDate = eventDate,
+                            dueDate = dueDate,
                             comment = model.comment,
                             notificationsEnabled = model.notificationsEnabled,
-                            status = PetEventStatusEntity.valueOf(model.status),
+                            status = status,
                         ),
                     ) ?: error("Updated pet event not found")
                     accepted += mutation.toAccepted(updated.version)
@@ -230,8 +238,9 @@ class SyncPushService(
         when (mutation.operation) {
             "UPSERT" -> {
                 val payload = mutation.payload ?: throw ApiException(HttpStatusCode.BadRequest, "missing_mutation_payload", "Для WEIGHT_ENTRY UPSERT обязателен payload")
-                val model = json.decodeFromJsonElement<SyncWeightEntryWriteModel>(payload)
-                val petId = model.petId.toUuidOrBadRequest("payload.petId")
+                val model = decodeMutationPayload<SyncWeightEntryWriteModel>(payload)
+                val petId = model.petId.toPayloadUuidOrInvalidPayload()
+                val date = model.date.toLocalDateOrInvalidPayload()
                 if (petId != currentPetId) {
                     throw ApiException(HttpStatusCode.Forbidden, "push_pet_forbidden", "Нельзя пушить изменения для чужого питомца")
                 }
@@ -242,7 +251,7 @@ class SyncPushService(
                         entityId = entityId,
                         command = CreateWeightEntryCommand(
                             petId = currentPetId,
-                            date = LocalDate.parse(model.date),
+                            date = date,
                             weightGrams = model.weightGrams,
                             comment = model.comment,
                         ),
@@ -259,7 +268,7 @@ class SyncPushService(
                     val updated = weightEntryRepository.update(
                         id = entityId,
                         command = UpdateWeightEntryCommand(
-                            date = LocalDate.parse(model.date),
+                            date = date,
                             weightGrams = model.weightGrams,
                             comment = model.comment,
                         ),
@@ -296,8 +305,52 @@ class SyncPushService(
         else -> 100
     }
 
+    private inline fun <reified T> decodeMutationPayload(payload: JsonElement): T = try {
+        json.decodeFromJsonElement<T>(payload)
+    } catch (_: SerializationException) {
+        throw invalidMutationPayload()
+    } catch (_: IllegalArgumentException) {
+        throw invalidMutationPayload()
+    }
+
+    private fun Long?.toSignedArgbOrInvalidPayload(): Int? {
+        if (this == null) return null
+        if (this !in 0L..0xFFFFFFFFL) {
+            throw invalidMutationPayload()
+        }
+        return toInt()
+    }
+
+    private fun String.toEventCategoryOrInvalidPayload(): EventCategoryEntity = try {
+        EventCategoryEntity.valueOf(this)
+    } catch (_: IllegalArgumentException) {
+        throw invalidMutationPayload()
+    }
+
+    private fun String.toPetEventStatusOrInvalidPayload(): PetEventStatusEntity = try {
+        PetEventStatusEntity.valueOf(this)
+    } catch (_: IllegalArgumentException) {
+        throw invalidMutationPayload()
+    }
+
+    private fun String.toLocalDateOrInvalidPayload(): LocalDate = try {
+        LocalDate.parse(this)
+    } catch (_: DateTimeParseException) {
+        throw invalidMutationPayload()
+    }
+
+    private fun invalidMutationPayload(): ApiException = ApiException(
+        HttpStatusCode.BadRequest,
+        "invalid_mutation_payload",
+        "Payload sync mutation имеет недопустимый формат",
+    )
+
     private fun String.toUuidOrBadRequest(field: String): UUID = runCatching { UUID.fromString(this) }.getOrElse {
         throw ApiException(HttpStatusCode.BadRequest, "invalid_uuid", "Поле $field должно быть UUID")
+    }
+
+    private fun String.toPayloadUuidOrInvalidPayload(): UUID = runCatching { UUID.fromString(this) }.getOrElse {
+        throw invalidMutationPayload()
     }
 
     private fun SyncMutationEnvelope.toAccepted(version: Long): AcceptedMutationResponse = AcceptedMutationResponse(

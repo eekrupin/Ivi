@@ -10,6 +10,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 import ru.ekrupin.ivi.data.sync.remote.SyncHttpException
 
@@ -24,6 +25,12 @@ class OkHttpPetAccessRemoteDataSource @Inject constructor(
             url = "${baseUrl.trimEnd('/')}/v1/pets/current",
             accessToken = accessToken,
         ).toPetAccessContext()
+
+    override suspend fun getCurrentPetLeaveOptions(baseUrl: String, accessToken: String): RemoteLeavePetOptions =
+        executeJsonGet(
+            url = "${baseUrl.trimEnd('/')}/v1/pets/current/leave-options",
+            accessToken = accessToken,
+        ).toLeavePetOptions()
 
     override suspend fun createPet(baseUrl: String, accessToken: String, name: String, birthDate: LocalDate?): RemotePetAccessPet =
         executeJsonPost(
@@ -53,6 +60,21 @@ class OkHttpPetAccessRemoteDataSource @Inject constructor(
             accessToken = accessToken,
             body = JSONObject().put("code", code.trim()).toString(),
         ).toPetAccessContext()
+
+    override suspend fun leaveCurrentPet(
+        baseUrl: String,
+        accessToken: String,
+        transferOwnerToUserId: String?,
+        deletePet: Boolean,
+    ): RemotePetMembership =
+        executeJsonPost(
+            url = "${baseUrl.trimEnd('/')}/v1/pets/current/leave",
+            accessToken = accessToken,
+            body = JSONObject().apply {
+                if (transferOwnerToUserId != null) put("transferOwnerToUserId", transferOwnerToUserId)
+                if (deletePet) put("deletePet", true)
+            }.toString(),
+        ).getJSONObject("membership").toMembership()
 
     private suspend fun executeJsonGet(url: String, accessToken: String): JSONObject = withContext(Dispatchers.IO) {
         val request = Request.Builder()
@@ -98,6 +120,25 @@ class OkHttpPetAccessRemoteDataSource @Inject constructor(
     private fun JSONObject.toPetAccessContext(): RemotePetAccessContext = RemotePetAccessContext(
         pet = getJSONObject("pet").toPet(),
         membership = getJSONObject("membership").toMembership(),
+    )
+
+    private fun JSONObject.toLeavePetOptions(): RemoteLeavePetOptions = RemoteLeavePetOptions(
+        pet = getJSONObject("pet").toPet(),
+        membership = getJSONObject("membership").toMembership(),
+        transferCandidates = getJSONArray("transferCandidates").toUserProfiles(),
+        canDeletePet = getBoolean("canDeletePet"),
+    )
+
+    private fun JSONArray.toUserProfiles(): List<RemotePetUserProfile> = buildList {
+        for (index in 0 until length()) {
+            add(getJSONObject(index).toUserProfile())
+        }
+    }
+
+    private fun JSONObject.toUserProfile(): RemotePetUserProfile = RemotePetUserProfile(
+        id = getString("id"),
+        email = getString("email"),
+        displayName = optString("displayName").takeIf { it.isNotBlank() },
     )
 
     private fun JSONObject.toMembership(): RemotePetMembership = RemotePetMembership(

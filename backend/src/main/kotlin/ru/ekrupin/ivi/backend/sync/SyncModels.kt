@@ -78,7 +78,7 @@ data class SyncEventTypeResponse(
     val category: String,
     val defaultDurationDays: Int? = null,
     val isActive: Boolean,
-    val colorArgb: Int? = null,
+    val colorArgb: Long? = null,
     val iconKey: String? = null,
     val createdAt: String,
 )
@@ -154,7 +154,7 @@ fun EventTypeRecord.toSyncEventTypeResponse(): SyncEventTypeResponse = SyncEvent
     category = category.name,
     defaultDurationDays = defaultDurationDays,
     isActive = isActive,
-    colorArgb = colorArgb,
+    colorArgb = colorArgb?.let(Integer::toUnsignedLong),
     iconKey = iconKey,
     createdAt = createdAt.toApiInstantString(),
 )
@@ -239,7 +239,7 @@ data class SyncEventTypeWriteModel(
     val category: String,
     val defaultDurationDays: Int? = null,
     val isActive: Boolean,
-    val colorArgb: Int? = null,
+    val colorArgb: Long? = null,
     val iconKey: String? = null,
 )
 

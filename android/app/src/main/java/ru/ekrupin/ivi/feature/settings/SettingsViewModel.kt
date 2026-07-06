@@ -19,8 +19,10 @@ import ru.ekrupin.ivi.app.core.AppConstants
 import ru.ekrupin.ivi.data.auth.session.AuthSessionManager
 import ru.ekrupin.ivi.data.auth.session.AuthSessionResult
 import ru.ekrupin.ivi.data.pet.remote.PetAccessRemoteDataSource
+import ru.ekrupin.ivi.data.pet.remote.RemoteLeavePetOptions
 import ru.ekrupin.ivi.data.sync.AppSyncRunner
 import ru.ekrupin.ivi.data.sync.AppSyncStatus
+import ru.ekrupin.ivi.data.sync.ClearServerPetLocalDataUseCase
 import ru.ekrupin.ivi.data.sync.config.SyncSessionStore
 import ru.ekrupin.ivi.data.sync.conflict.SyncConflictRepository
 import ru.ekrupin.ivi.data.sync.remote.SyncHttpException
@@ -35,6 +37,7 @@ class SettingsViewModel @Inject constructor(
     private val syncSessionStore: SyncSessionStore,
     private val syncConflictRepository: SyncConflictRepository,
     private val petAccessRemoteDataSource: PetAccessRemoteDataSource,
+    private val clearServerPetLocalData: ClearServerPetLocalDataUseCase,
 ) : ViewModel() {
     val settings: StateFlow<ReminderSettings?> = reminderSettingsRepository.observeSettings()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -120,9 +123,10 @@ class SettingsViewModel @Inject constructor(
         appSyncRunner.triggerManualSync()
     }
 
-    fun refreshCurrentPetAccess() {
+    fun refreshCurrentPetAccess(force: Boolean = false) {
         val current = _syncUiState.value
         if (current.petAccess is PetAccessUiState.Loading || current.petAccess is PetAccessUiState.Known) return
+        if (!force && current.petAccess is PetAccessUiState.NoServerPet) return
         viewModelScope.launch {
             val session = authSessionManager.getSession()
             if (!session.isAuthenticated) return@launch
@@ -131,7 +135,9 @@ class SettingsViewModel @Inject constructor(
                 val access = petAccessRemoteDataSource.getCurrentPetAccess(session.baseUrl, session.accessToken)
                 _syncUiState.value = _syncUiState.value.copy(petAccess = access.toPetAccessUiState())
             } catch (exception: Exception) {
-                _syncUiState.value = _syncUiState.value.copy(petAccess = PetAccessUiState.Unknown)
+                _syncUiState.value = _syncUiState.value.copy(
+                    petAccess = if (exception.isCurrentPetNotFound()) PetAccessUiState.NoServerPet else PetAccessUiState.Unknown,
+                )
             }
         }
     }
@@ -194,9 +200,98 @@ class SettingsViewModel @Inject constructor(
                     inviteCode = "",
                     inviteStatus = InviteStatus.Accepted(access.pet.name, access.membership.role.toPetAccessRole()),
                     petAccess = access.toPetAccessUiState(),
+                    leavePetStatus = LeavePetStatus.Idle,
                 )
             } catch (exception: Exception) {
                 _syncUiState.value = _syncUiState.value.copy(inviteStatus = InviteStatus.Error(exception.toInviteMessage("Не удалось принять приглашение")))
+            }
+        }
+    }
+
+    fun leaveSharedPet() {
+        viewModelScope.launch {
+            val current = _syncUiState.value
+            val petAccess = current.petAccess as? PetAccessUiState.Known
+            val session = authSessionManager.getSession()
+            if (!session.isAuthenticated) {
+                _syncUiState.value = current.copy(leavePetStatus = LeavePetStatus.Error("Сначала войдите в синхронизацию"))
+                return@launch
+            }
+            if (petAccess?.role == PetAccessRole.Owner) {
+                loadOwnerLeaveOptions(current, session.baseUrl, session.accessToken)
+            } else if (petAccess?.role == PetAccessRole.Member) {
+                leavePet(current, session.baseUrl, session.accessToken)
+            } else {
+                _syncUiState.value = current.copy(leavePetStatus = LeavePetStatus.Error("Сначала загрузите данные общего доступа"))
+            }
+        }
+    }
+
+    fun transferOwnerAndLeave(userId: String) {
+        viewModelScope.launch {
+            val current = _syncUiState.value
+            val session = authSessionManager.getSession()
+            if (!session.isAuthenticated) {
+                _syncUiState.value = current.copy(leavePetStatus = LeavePetStatus.Error("Сначала войдите в синхронизацию"))
+                return@launch
+            }
+            leavePet(current, session.baseUrl, session.accessToken, transferOwnerToUserId = userId)
+        }
+    }
+
+    fun deletePetAndLeave() {
+        viewModelScope.launch {
+            val current = _syncUiState.value
+            val session = authSessionManager.getSession()
+            if (!session.isAuthenticated) {
+                _syncUiState.value = current.copy(leavePetStatus = LeavePetStatus.Error("Сначала войдите в синхронизацию"))
+                return@launch
+            }
+            leavePet(current, session.baseUrl, session.accessToken, deletePet = true)
+        }
+    }
+
+    private suspend fun loadOwnerLeaveOptions(current: SyncUiState, baseUrl: String, accessToken: String) {
+        _syncUiState.value = current.copy(leavePetStatus = LeavePetStatus.Loading)
+        try {
+            val options = petAccessRemoteDataSource.getCurrentPetLeaveOptions(baseUrl, accessToken)
+            _syncUiState.value = _syncUiState.value.copy(leavePetStatus = options.toLeavePetStatus())
+        } catch (exception: Exception) {
+            _syncUiState.value = _syncUiState.value.copy(leavePetStatus = exception.toLeavePetStatus())
+        }
+    }
+
+    private suspend fun leavePet(
+        current: SyncUiState,
+        baseUrl: String,
+        accessToken: String,
+        transferOwnerToUserId: String? = null,
+        deletePet: Boolean = false,
+    ) {
+        _syncUiState.value = current.copy(leavePetStatus = LeavePetStatus.Loading)
+        try {
+            petAccessRemoteDataSource.leaveCurrentPet(
+                baseUrl = baseUrl,
+                accessToken = accessToken,
+                transferOwnerToUserId = transferOwnerToUserId,
+                deletePet = deletePet,
+            )
+            clearServerPetLocalData()
+            _syncUiState.value = _syncUiState.value.copy(
+                petAccess = PetAccessUiState.NoServerPet,
+                leavePetStatus = LeavePetStatus.Left,
+                inviteStatus = InviteStatus.Idle,
+            )
+        } catch (exception: Exception) {
+            if (exception.isCurrentPetNotFound()) {
+                clearServerPetLocalData()
+                _syncUiState.value = _syncUiState.value.copy(
+                    petAccess = PetAccessUiState.NoServerPet,
+                    leavePetStatus = LeavePetStatus.Left,
+                    inviteStatus = InviteStatus.Idle,
+                )
+            } else {
+                _syncUiState.value = _syncUiState.value.copy(leavePetStatus = exception.toLeavePetStatus())
             }
         }
     }
@@ -251,6 +346,7 @@ data class SyncUiState(
     val conflictCount: Int = 0,
     val inviteCode: String = "",
     val inviteStatus: InviteStatus = InviteStatus.Idle,
+    val leavePetStatus: LeavePetStatus = LeavePetStatus.Idle,
     val petAccess: PetAccessUiState = PetAccessUiState.Unknown,
 )
 
@@ -265,12 +361,28 @@ sealed interface InviteStatus {
 sealed interface PetAccessUiState {
     data object Unknown : PetAccessUiState
     data object Loading : PetAccessUiState
+    data object NoServerPet : PetAccessUiState
     data class Known(
         val petId: String,
         val petName: String,
         val role: PetAccessRole,
     ) : PetAccessUiState
 }
+
+sealed interface LeavePetStatus {
+    data object Idle : LeavePetStatus
+    data object Loading : LeavePetStatus
+    data object Left : LeavePetStatus
+    data class TransferRequired(val candidates: List<PetOwnerTransferCandidate>) : LeavePetStatus
+    data object DeletePetConfirmation : LeavePetStatus
+    data class Error(val message: String) : LeavePetStatus
+}
+
+data class PetOwnerTransferCandidate(
+    val id: String,
+    val email: String,
+    val displayName: String?,
+)
 
 enum class PetAccessRole {
     Owner,
@@ -341,6 +453,7 @@ private fun Exception.toInviteMessage(fallback: String): String {
             code == 404 && body.contains("current_pet_not_found") -> "Сначала отправьте данные этого устройства на сервер, чтобы создать серверного питомца"
             code == 404 && body.contains("invite_not_found") -> "Приглашение не найдено. Проверьте код"
             code == 409 && body.contains("user_already_bound_to_pet") -> "Этот аккаунт уже привязан к питомцу"
+            code == 409 && body.contains("invite_pet_not_available") -> "Приглашение больше недоступно: питомец удален или закрыт"
             code == 409 && body.contains("invite_expired") -> "Срок действия приглашения истек"
             code == 409 && body.contains("invite_not_active") -> "Приглашение уже использовано или недействительно"
             code == 403 && body.contains("owner_required") -> "Создать приглашение может только владелец питомца"
@@ -357,11 +470,51 @@ private fun Exception.toInviteMessage(fallback: String): String {
     return message ?: fallback
 }
 
+private fun Exception.toLeavePetStatus(): LeavePetStatus {
+    if (this is SyncHttpException) {
+        val body = message.orEmpty()
+        return when {
+            code == 409 && body.contains("owner_leave_requires_action") -> LeavePetStatus.Error("Чтобы выйти, сначала выберите передачу владения или удаление питомца.")
+            code == 409 && body.contains("owner_delete_requires_no_members") -> LeavePetStatus.Error("Нельзя удалить питомца, пока у него есть другие участники.")
+            code == 409 && body.contains("invalid_owner_transfer_candidate") -> LeavePetStatus.Error("Нельзя передать владение выбранному участнику.")
+            code == 409 && body.contains("owner_cannot_leave_pet") -> LeavePetStatus.Error("Владелец не может выйти без передачи владения или удаления питомца.")
+            code == 401 -> LeavePetStatus.Error("Сессия истекла. Войдите в синхронизацию заново")
+            code in 500..599 -> LeavePetStatus.Error("Ошибка сервера: HTTP $code")
+            else -> LeavePetStatus.Error(message ?: "Не удалось покинуть общего питомца")
+        }
+    }
+    if (this is SocketTimeoutException || this is InterruptedIOException || message.orEmpty().contains("timeout", ignoreCase = true)) {
+        return LeavePetStatus.Error("Сервер не ответил вовремя. Проверьте подключение и попробуйте еще раз")
+    }
+    if (this is IOException) {
+        return LeavePetStatus.Error("Не удалось подключиться к серверу. Проверьте адрес и сеть")
+    }
+    return LeavePetStatus.Error(message ?: "Не удалось покинуть общего питомца")
+}
+
+private fun Exception.isCurrentPetNotFound(): Boolean = this is SyncHttpException &&
+    code == 404 &&
+    message.orEmpty().contains("current_pet_not_found")
+
 private fun ru.ekrupin.ivi.data.pet.remote.RemotePetAccessContext.toPetAccessUiState(): PetAccessUiState.Known = PetAccessUiState.Known(
     petId = pet.id,
     petName = pet.name,
     role = membership.role.toPetAccessRole(),
 )
+
+private fun RemoteLeavePetOptions.toLeavePetStatus(): LeavePetStatus = when {
+    transferCandidates.isNotEmpty() -> LeavePetStatus.TransferRequired(
+        candidates = transferCandidates.map { candidate ->
+            PetOwnerTransferCandidate(
+                id = candidate.id,
+                email = candidate.email,
+                displayName = candidate.displayName,
+            )
+        },
+    )
+    canDeletePet -> LeavePetStatus.DeletePetConfirmation
+    else -> LeavePetStatus.Error("Сейчас нельзя покинуть питомца. Попробуйте позже.")
+}
 
 private fun String.toPetAccessRole(): PetAccessRole = when (uppercase()) {
     "OWNER" -> PetAccessRole.Owner

@@ -230,6 +230,68 @@ paths:
                 $ref: '#/components/schemas/NotFoundError'
       tags:
         - Pets
+  /v1/pets/current/leave:
+    post:
+      operationId: PetsApi_leaveCurrentPet
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeavePetResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+      tags:
+        - Pets
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeavePetRequest'
+  /v1/pets/current/leave-options:
+    get:
+      operationId: PetsApi_getCurrentPetLeaveOptions
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeavePetOptionsResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+      tags:
+        - Pets
   /v1/pets/{petId}/invites:
     post:
       operationId: InvitesApi_createInvite
@@ -486,6 +548,11 @@ components:
         version:
           type: integer
           format: int64
+    ArgbColor:
+      type: integer
+      format: int64
+      minimum: 0
+      maximum: 4294967295
     AuthRequestBase:
       type: object
       required:
@@ -750,8 +817,7 @@ components:
           type: boolean
         colorArgb:
           anyOf:
-            - type: integer
-              format: int32
+            - $ref: '#/components/schemas/ArgbColor'
             - type: 'null'
         iconKey:
           anyOf:
@@ -785,8 +851,7 @@ components:
           type: boolean
         colorArgb:
           anyOf:
-            - type: integer
-              format: int32
+            - $ref: '#/components/schemas/ArgbColor'
             - type: 'null'
         iconKey:
           anyOf:
@@ -853,6 +918,55 @@ components:
         - ACCEPTED
         - REVOKED
         - EXPIRED
+    LeavePetOptionsResponse:
+      type: object
+      required:
+        - pet
+        - membership
+        - transferCandidates
+        - canDeletePet
+      properties:
+        pet:
+          $ref: '#/components/schemas/Pet'
+        membership:
+          $ref: '#/components/schemas/PetMembership'
+        transferCandidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserProfile'
+        canDeletePet:
+          type: boolean
+    LeavePetRequest:
+      type: object
+      properties:
+        transferOwnerToUserId:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        deletePet:
+          type: boolean
+    LeavePetResponse:
+      type: object
+      required:
+        - membership
+        - action
+      properties:
+        membership:
+          $ref: '#/components/schemas/PetMembership'
+        pet:
+          anyOf:
+            - $ref: '#/components/schemas/Pet'
+            - type: 'null'
+        newOwnerMembership:
+          anyOf:
+            - $ref: '#/components/schemas/PetMembership'
+            - type: 'null'
+        action:
+          type: string
+          enum:
+            - LEFT
+            - TRANSFERRED_OWNERSHIP
+            - DELETED_PET
     LoginRequest:
       type: object
       allOf:

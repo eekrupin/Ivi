@@ -14,6 +14,7 @@ import ru.ekrupin.ivi.backend.db.model.MembershipStatusEntity
 import ru.ekrupin.ivi.backend.db.model.PetMembershipRecord
 import ru.ekrupin.ivi.backend.db.schema.InvitesTable
 import ru.ekrupin.ivi.backend.db.schema.PetMembershipsTable
+import ru.ekrupin.ivi.backend.db.schema.PetsTable
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -81,6 +82,28 @@ class InviteRepository(
 
         return try {
             databaseFactory.dbQueryResult {
+                val inviteBeforeAccept = InvitesTable.selectAll()
+                    .where {
+                        (InvitesTable.id eq id) and
+                            (InvitesTable.status eq InviteStatusEntity.PENDING.name) and
+                            (InvitesTable.expiresAt greaterEq now)
+                    }
+                    .singleOrNull()
+                    ?.toInviteRecord()
+                    ?: return@dbQueryResult AcceptInviteMembershipResult.InviteNotActive
+
+                val petIsAvailable = PetsTable.selectAll()
+                    .where {
+                        (PetsTable.id eq inviteBeforeAccept.petId) and
+                            PetsTable.deletedAt.isNull()
+                    }
+                    .forUpdate()
+                    .singleOrNull() != null
+
+                if (!petIsAvailable) {
+                    return@dbQueryResult AcceptInviteMembershipResult.PetNotAvailable
+                }
+
                 val hasActiveMembership = PetMembershipsTable.selectAll()
                     .where {
                         (PetMembershipsTable.userId eq acceptedByUserId) and
@@ -112,6 +135,34 @@ class InviteRepository(
                     .where { InvitesTable.id eq id }
                     .single()
                     .toInviteRecord()
+
+                val existingMembership = PetMembershipsTable.selectAll()
+                    .where {
+                        (PetMembershipsTable.petId eq invite.petId) and
+                            (PetMembershipsTable.userId eq acceptedByUserId)
+                    }
+                    .singleOrNull()
+                    ?.toPetMembershipRecord()
+
+                if (existingMembership?.status == MembershipStatusEntity.REVOKED) {
+                    val reactivated = PetMembershipsTable.update({
+                        (PetMembershipsTable.id eq existingMembership.id) and
+                            (PetMembershipsTable.status eq MembershipStatusEntity.REVOKED.name)
+                    }) {
+                        it[role] = MembershipRoleEntity.MEMBER.name
+                        it[PetMembershipsTable.status] = MembershipStatusEntity.ACTIVE.name
+                        it[updatedAt] = now
+                    }
+
+                    if (reactivated == 1) {
+                        val membership = PetMembershipsTable.selectAll()
+                            .where { PetMembershipsTable.id eq existingMembership.id }
+                            .single()
+                            .toPetMembershipRecord()
+
+                        return@dbQueryResult AcceptInviteMembershipResult.Accepted(invite = invite, membership = membership)
+                    }
+                }
 
                 PetMembershipsTable.insert {
                     it[PetMembershipsTable.id] = membershipId
@@ -181,6 +232,8 @@ class InviteRepository(
         data object AlreadyBound : AcceptInviteMembershipResult
 
         data object InviteNotActive : AcceptInviteMembershipResult
+
+        data object PetNotAvailable : AcceptInviteMembershipResult
     }
 
     private companion object {

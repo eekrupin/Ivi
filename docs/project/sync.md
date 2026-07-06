@@ -123,6 +123,8 @@ Recovery для `RequiresBootstrap` не должен молча перетир�
 
 Logout/reset очищает session store; foreground/background sync молчат до нового входа.
 
+`logout` и `leave` различаются: `logout` — локальный сброс сессии на устройстве, `leave` — серверная операция выхода из текущего питомца. Для `OWNER` перенос ownership или удаление серверного питомца выполняются атомарными backend operations. Клиент и API не должны завязываться на максимум двух пользователей: UI выбора нового владельца работает со списком активных участников-кандидатов.
+
 ## Foreground и background sync
 Foreground-trigger:
 - `MainActivity.onStart()` вызывает `AppSyncRunner.triggerForegroundSync()`;

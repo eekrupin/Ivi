@@ -23,6 +23,7 @@ interface SyncStateStore {
     suspend fun setRequiresBootstrap(value: Boolean)
     suspend fun saveSyncConfig(baseUrl: String, accessToken: String)
     suspend fun markForegroundSyncStarted(timestamp: LocalDateTime)
+    suspend fun clear()
 }
 
 class RoomSyncStateStore @Inject constructor(
@@ -125,5 +126,9 @@ class RoomSyncStateStore @Inject constructor(
                 lastForegroundSyncStartedAt = timestamp,
             ),
         )
+    }
+
+    override suspend fun clear() {
+        syncStateDao.deleteAll()
     }
 }

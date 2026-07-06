@@ -130,7 +130,12 @@ class PublishLocalDataToServerUseCase @Inject constructor(
             syncOutboxDao.deleteAll()
 
             val eventTypes = eventTypeDao.getActiveForSync().map { entity ->
-                entity.copy(syncState = SyncState.PENDING_UPLOAD, serverVersion = null, lastSyncedAt = null)
+                entity.copy(
+                    remoteId = entity.remoteId.normalizedRemoteId(),
+                    syncState = SyncState.PENDING_UPLOAD,
+                    serverVersion = null,
+                    lastSyncedAt = null,
+                )
             }
             eventTypes.forEach { entity ->
                 eventTypeDao.insert(entity)
@@ -140,7 +145,12 @@ class PublishLocalDataToServerUseCase @Inject constructor(
             val eventTypeById = eventTypes.associateBy { it.id }
             val petEvents = petEventDao.getActiveForSync().mapNotNull { entity ->
                 val eventType = eventTypeById[entity.eventTypeId] ?: return@mapNotNull null
-                entity.copy(syncState = SyncState.PENDING_UPLOAD, serverVersion = null, lastSyncedAt = null) to eventType
+                entity.copy(
+                    remoteId = entity.remoteId.normalizedRemoteId(),
+                    syncState = SyncState.PENDING_UPLOAD,
+                    serverVersion = null,
+                    lastSyncedAt = null,
+                ) to eventType
             }
             petEvents.forEach { (entity, eventType) ->
                 petEventDao.insert(entity)
@@ -148,7 +158,12 @@ class PublishLocalDataToServerUseCase @Inject constructor(
             }
 
             val weightEntries = weightEntryDao.getActiveForSync().map { entity ->
-                entity.copy(syncState = SyncState.PENDING_UPLOAD, serverVersion = null, lastSyncedAt = null)
+                entity.copy(
+                    remoteId = entity.remoteId.normalizedRemoteId(),
+                    syncState = SyncState.PENDING_UPLOAD,
+                    serverVersion = null,
+                    lastSyncedAt = null,
+                )
             }
             weightEntries.forEach { entity ->
                 weightEntryDao.insert(entity)
@@ -160,6 +175,13 @@ class PublishLocalDataToServerUseCase @Inject constructor(
     }
 
     private fun deviceId(): String = "android-recovery-${UUID.randomUUID()}"
+
+    private fun String?.normalizedRemoteId(): String = if (isValidUuid()) this!! else UUID.randomUUID().toString()
+
+    private fun String?.isValidUuid(): Boolean = !isNullOrBlank() && runCatching { UUID.fromString(this) }
+        .getOrNull()
+        ?.toString()
+        ?.equals(this, ignoreCase = true) == true
 }
 
 sealed interface SyncRecoveryResult {

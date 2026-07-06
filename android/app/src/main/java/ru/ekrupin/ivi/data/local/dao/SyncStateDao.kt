@@ -13,4 +13,7 @@ interface SyncStateDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(state: SyncStateEntity)
+
+    @Query("DELETE FROM sync_state")
+    suspend fun deleteAll()
 }

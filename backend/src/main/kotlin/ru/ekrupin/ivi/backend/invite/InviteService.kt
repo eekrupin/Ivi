@@ -80,6 +80,11 @@ class InviteService(
                 }
                 return acceptedInviteResponseOrInactive(currentInvite, currentUserId)
             }
+            AcceptInviteMembershipResult.PetNotAvailable -> throw ApiException(
+                HttpStatusCode.Conflict,
+                "invite_pet_not_available",
+                "Питомец для этого приглашения больше недоступен",
+            )
         }
 
         val pet = petRepository.findById(accepted.invite.petId)

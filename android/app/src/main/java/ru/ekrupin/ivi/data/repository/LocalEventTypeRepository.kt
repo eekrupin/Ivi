@@ -60,6 +60,7 @@ class LocalEventTypeRepository @Inject constructor(
         database.withTransaction {
             if (petEventDao.countByEventTypeId(id) == 0) {
                 val deleted = existing.copy(
+                    remoteId = existing.remoteId.normalizedRemoteId(),
                     isActive = false,
                     updatedAt = now,
                     deletedAt = now,
@@ -69,6 +70,7 @@ class LocalEventTypeRepository @Inject constructor(
                 syncOutboxRecorder.enqueueEventTypeDelete(deleted)
             } else {
                 val updated = existing.copy(
+                    remoteId = existing.remoteId.normalizedRemoteId(),
                     isActive = false,
                     updatedAt = now,
                     syncState = SyncState.PENDING_UPLOAD,
@@ -78,4 +80,11 @@ class LocalEventTypeRepository @Inject constructor(
             }
         }
     }
+
+    private fun String?.normalizedRemoteId(): String = if (isValidUuid()) this!! else UUID.randomUUID().toString()
+
+    private fun String?.isValidUuid(): Boolean = !isNullOrBlank() && runCatching { UUID.fromString(this) }
+        .getOrNull()
+        ?.toString()
+        ?.equals(this, ignoreCase = true) == true
 }

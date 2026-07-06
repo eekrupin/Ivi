@@ -90,6 +90,28 @@ data class CurrentPetResponse(
 )
 
 @Serializable
+data class LeavePetOptionsResponse(
+    val pet: PetResponse,
+    val membership: PetMembershipResponse,
+    val transferCandidates: List<UserProfileResponse>,
+    val canDeletePet: Boolean,
+)
+
+@Serializable
+data class LeavePetRequest(
+    val transferOwnerToUserId: String? = null,
+    val deletePet: Boolean = false,
+)
+
+@Serializable
+data class LeavePetResponse(
+    val membership: PetMembershipResponse,
+    val pet: PetResponse? = null,
+    val newOwnerMembership: PetMembershipResponse? = null,
+    val action: String,
+)
+
+@Serializable
 data class PetMembershipResponse(
     val id: String,
     val version: Long = 1,

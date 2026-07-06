@@ -57,7 +57,7 @@ class SyncChangesService(
         val until = Instant.now()
 
         val activeMemberships = petMembershipRepository.listActiveByPetId(pet.id)
-        val changedMemberships = petMembershipRepository.listActiveByPetIdChangedBetween(pet.id, since, until)
+        val changedMemberships = petMembershipRepository.listByPetIdChangedBetween(pet.id, since, until)
         val changedPetRecords = petRepository.listChangedByIds(listOf(pet.id), since, until)
 
         val membershipUserIds = activeMemberships.map { it.userId }.toSet()

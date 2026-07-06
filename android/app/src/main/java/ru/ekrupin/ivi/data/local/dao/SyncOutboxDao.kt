@@ -14,7 +14,7 @@ interface SyncOutboxDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: SyncOutboxEntity): Long
 
-    @Query("SELECT * FROM sync_outbox WHERE status = :status ORDER BY createdAt ASC LIMIT :limit")
+    @Query("SELECT * FROM sync_outbox WHERE status = :status ORDER BY createdAt ASC, id ASC LIMIT :limit")
     suspend fun getByStatus(status: SyncOutboxStatus, limit: Int): List<SyncOutboxEntity>
 
     @Query("SELECT COUNT(*) FROM sync_outbox WHERE status = :status")

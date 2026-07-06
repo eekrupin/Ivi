@@ -1,16 +1,16 @@
 package ru.ekrupin.ivi.data.sync
 
+import java.time.LocalDateTime
 import java.util.UUID
 import org.json.JSONObject
 import ru.ekrupin.ivi.data.local.entity.EventTypeEntity
 import ru.ekrupin.ivi.data.local.entity.PetEntity
 import ru.ekrupin.ivi.data.local.entity.PetEventEntity
-import ru.ekrupin.ivi.data.local.entity.WeightEntryEntity
 import ru.ekrupin.ivi.data.local.entity.SyncOutboxEntity
+import ru.ekrupin.ivi.data.local.entity.WeightEntryEntity
 import ru.ekrupin.ivi.data.sync.model.SyncEntityType
 import ru.ekrupin.ivi.data.sync.model.SyncOperation
 import ru.ekrupin.ivi.data.sync.model.SyncOutboxStatus
-import java.time.LocalDateTime
 
 class SyncPayloadFactory {
     fun eventTypeUpsert(
@@ -21,7 +21,7 @@ class SyncPayloadFactory {
     ): SyncOutboxEntity = SyncOutboxEntity(
         entityType = SyncEntityType.EVENT_TYPE,
         entityLocalId = entity.id,
-        entityRemoteId = entity.remoteId.orEmpty(),
+        entityRemoteId = entity.requireRemoteId(),
         operation = SyncOperation.UPSERT,
         payloadJson = JSONObject().apply {
             put("petId", pet.requireRemoteId())
@@ -42,7 +42,7 @@ class SyncPayloadFactory {
     fun eventTypeDelete(entity: EventTypeEntity, now: LocalDateTime, baseVersion: Long? = entity.serverVersion): SyncOutboxEntity = SyncOutboxEntity(
         entityType = SyncEntityType.EVENT_TYPE,
         entityLocalId = entity.id,
-        entityRemoteId = entity.remoteId.orEmpty(),
+        entityRemoteId = entity.requireRemoteId(),
         operation = SyncOperation.DELETE,
         payloadJson = null,
         baseVersion = baseVersion,
@@ -61,7 +61,7 @@ class SyncPayloadFactory {
     ): SyncOutboxEntity = SyncOutboxEntity(
         entityType = SyncEntityType.PET_EVENT,
         entityLocalId = entity.id,
-        entityRemoteId = entity.remoteId.orEmpty(),
+        entityRemoteId = entity.requireRemoteId(),
         operation = SyncOperation.UPSERT,
         payloadJson = JSONObject().apply {
             put("petId", pet.requireRemoteId())
@@ -82,7 +82,7 @@ class SyncPayloadFactory {
     fun petEventDelete(entity: PetEventEntity, now: LocalDateTime, baseVersion: Long? = entity.serverVersion): SyncOutboxEntity = SyncOutboxEntity(
         entityType = SyncEntityType.PET_EVENT,
         entityLocalId = entity.id,
-        entityRemoteId = entity.remoteId.orEmpty(),
+        entityRemoteId = entity.requireRemoteId(),
         operation = SyncOperation.DELETE,
         payloadJson = null,
         baseVersion = baseVersion,
@@ -100,7 +100,7 @@ class SyncPayloadFactory {
     ): SyncOutboxEntity = SyncOutboxEntity(
         entityType = SyncEntityType.WEIGHT_ENTRY,
         entityLocalId = entity.id,
-        entityRemoteId = entity.remoteId.orEmpty(),
+        entityRemoteId = entity.requireRemoteId(),
         operation = SyncOperation.UPSERT,
         payloadJson = JSONObject().apply {
             put("petId", pet.requireRemoteId())
@@ -115,6 +115,19 @@ class SyncPayloadFactory {
         updatedAt = now,
     )
 
-    private fun PetEntity.requireRemoteId(): String = remoteId ?: error("Pet remoteId is missing")
-    private fun EventTypeEntity.requireRemoteId(): String = remoteId ?: error("EventType remoteId is missing")
+    private fun PetEntity.requireRemoteId(): String = remoteId.requireRemoteId("Pet", id)
+    private fun EventTypeEntity.requireRemoteId(): String = remoteId.requireRemoteId("EventType", id)
+    private fun PetEventEntity.requireRemoteId(): String = remoteId.requireRemoteId("PetEvent", id)
+    private fun WeightEntryEntity.requireRemoteId(): String = remoteId.requireRemoteId("WeightEntry", id)
+
+    private fun String?.requireRemoteId(entityType: String, localId: Long): String {
+        val value = this?.takeIf { it.isNotBlank() }
+            ?: error("$entityType remoteId is missing for local id $localId")
+        val isValidUuid = runCatching { UUID.fromString(value) }
+            .getOrNull()
+            ?.toString()
+            ?.equals(value, ignoreCase = true) == true
+        check(isValidUuid) { "$entityType remoteId is not a UUID for local id $localId" }
+        return value
+    }
 }

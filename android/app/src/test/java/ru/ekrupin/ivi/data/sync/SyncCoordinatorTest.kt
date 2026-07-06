@@ -298,6 +298,19 @@ internal class FakeSyncStateStore(cursor: String? = null) : SyncStateStore {
     override suspend fun markForegroundSyncStarted(timestamp: LocalDateTime) {
         state = state.copy(lastForegroundSyncStartedAt = timestamp)
     }
+
+    override suspend fun clear() {
+        state = state.copy(
+            cursor = null,
+            lastBootstrapAt = null,
+            lastChangesAt = null,
+            lastSuccessfulReadAt = null,
+            requiresBootstrap = false,
+            configuredBaseUrl = null,
+            configuredAccessToken = null,
+            lastForegroundSyncStartedAt = null,
+        )
+    }
 }
 
 internal class FakeSyncOutboxStore(
