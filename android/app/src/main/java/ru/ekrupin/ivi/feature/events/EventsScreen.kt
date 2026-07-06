@@ -16,12 +16,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.ekrupin.ivi.R
+import ru.ekrupin.ivi.core.ui.IviTestTags
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
 import ru.ekrupin.ivi.domain.model.PetEventStatus
 
@@ -33,7 +35,10 @@ fun EventsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    ScreenScaffold(title = stringResource(R.string.events_title)) {
+    ScreenScaffold(
+        title = stringResource(R.string.events_title),
+        modifier = Modifier.testTag(IviTestTags.EVENTS_ROOT),
+    ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(
                 PetEventStatus.ACTIVE,
@@ -124,7 +129,10 @@ fun EventsScreen(
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { onEditEvent(item.id) }) {
+                        TextButton(
+                            onClick = { onEditEvent(item.id) },
+                            modifier = Modifier.testTag(IviTestTags.EVENT_EDIT_BUTTON_PREFIX + item.id),
+                        ) {
                             Text(stringResource(R.string.events_edit))
                         }
                         when (item.status) {
@@ -150,7 +158,10 @@ fun EventsScreen(
             }
         }
 
-        Button(onClick = onCreateEvent) {
+        Button(
+            onClick = onCreateEvent,
+            modifier = Modifier.testTag(IviTestTags.EVENT_CREATE_BUTTON),
+        ) {
             Text(text = stringResource(R.string.home_add_event))
         }
     }

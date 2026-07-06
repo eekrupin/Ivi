@@ -13,6 +13,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -20,6 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import ru.ekrupin.ivi.R
+import ru.ekrupin.ivi.core.ui.IviTestTags
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
 import ru.ekrupin.ivi.data.sync.conflict.SyncConflictListItem
 import ru.ekrupin.ivi.data.sync.model.SyncEntityType
@@ -28,7 +30,10 @@ import ru.ekrupin.ivi.data.sync.model.SyncEntityType
 fun SyncConflictsScreen(viewModel: SyncConflictsViewModel = hiltViewModel()) {
     val conflicts = viewModel.conflicts.collectAsStateWithLifecycle()
 
-    ScreenScaffold(title = stringResource(R.string.sync_conflicts_title)) {
+    ScreenScaffold(
+        title = stringResource(R.string.sync_conflicts_title),
+        modifier = Modifier.testTag(IviTestTags.CONFLICTS_ROOT),
+    ) {
         Text(
             text = stringResource(R.string.sync_conflicts_description),
             style = MaterialTheme.typography.bodyMedium,
@@ -56,12 +61,17 @@ fun SyncConflictsScreen(viewModel: SyncConflictsViewModel = hiltViewModel()) {
                 }
             }
         } else {
-            conflicts.value.forEach { item ->
-                ConflictCard(
-                    item = item,
-                    onAcceptServer = { viewModel.acceptServerVersion(item.id) },
-                    onRetryLocal = { viewModel.retryLocalChanges(item.id) },
-                )
+            Column(
+                modifier = Modifier.testTag(IviTestTags.CONFLICT_LIST),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                conflicts.value.forEach { item ->
+                    ConflictCard(
+                        item = item,
+                        onAcceptServer = { viewModel.acceptServerVersion(item.id) },
+                        onRetryLocal = { viewModel.retryLocalChanges(item.id) },
+                    )
+                }
             }
         }
     }
@@ -74,7 +84,9 @@ private fun ConflictCard(
     onRetryLocal: () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(IviTestTags.CONFLICT_ITEM_PREFIX + item.id),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f),
         ),
@@ -113,10 +125,16 @@ private fun ConflictCard(
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FilledTonalButton(onClick = onAcceptServer) {
+                FilledTonalButton(
+                    onClick = onAcceptServer,
+                    modifier = Modifier.testTag(IviTestTags.CONFLICT_ACCEPT_SERVER_BUTTON_PREFIX + item.id),
+                ) {
                     Text(stringResource(R.string.sync_conflicts_accept_server))
                 }
-                OutlinedButton(onClick = onRetryLocal) {
+                OutlinedButton(
+                    onClick = onRetryLocal,
+                    modifier = Modifier.testTag(IviTestTags.CONFLICT_RETRY_LOCAL_BUTTON_PREFIX + item.id),
+                ) {
                     Text(stringResource(R.string.sync_conflicts_retry_local))
                 }
             }

@@ -14,16 +14,22 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import ru.ekrupin.ivi.R
 import ru.ekrupin.ivi.app.navigation.IviDestination
 import ru.ekrupin.ivi.app.navigation.IviNavGraph
+import ru.ekrupin.ivi.core.ui.IviTestTags
 
 @Composable
+@OptIn(ExperimentalComposeUiApi::class)
 fun IviAppRoot() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -38,6 +44,9 @@ fun IviAppRoot() {
     )
 
     Scaffold(
+        modifier = Modifier
+            .semantics { testTagsAsResourceId = true }
+            .testTag(IviTestTags.APP_ROOT),
         bottomBar = {
             NavigationBar {
                 destinations.forEach { destination ->
@@ -54,6 +63,7 @@ fun IviAppRoot() {
                         },
                         icon = { Icon(destination.icon, contentDescription = null) },
                         label = { Text(stringResource(destination.labelRes)) },
+                        modifier = Modifier.testTag(destination.testTag),
                     )
                 }
             }
@@ -70,4 +80,13 @@ private data class BottomDestination(
     val route: IviDestination,
     val labelRes: Int,
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
-)
+) {
+    val testTag: String = when (route) {
+        IviDestination.Home -> IviTestTags.NAV_HOME
+        IviDestination.Events -> IviTestTags.NAV_EVENTS
+        IviDestination.Weight -> IviTestTags.NAV_WEIGHT
+        IviDestination.EventTypes -> IviTestTags.NAV_EVENT_TYPES
+        IviDestination.Settings -> IviTestTags.NAV_SETTINGS
+        else -> route.route
+    }
+}

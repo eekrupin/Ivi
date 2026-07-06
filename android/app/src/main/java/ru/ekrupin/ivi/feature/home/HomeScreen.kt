@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +48,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import ru.ekrupin.ivi.R
+import ru.ekrupin.ivi.core.ui.IviTestTags
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
 
 @Composable
@@ -62,9 +64,14 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    ScreenScaffold(title = stringResource(R.string.nav_home)) {
+    ScreenScaffold(
+        title = stringResource(R.string.nav_home),
+        modifier = Modifier.testTag(IviTestTags.HOME_ROOT),
+    ) {
         ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(IviTestTags.HOME_PET_OVERVIEW),
             colors = CardDefaults.elevatedCardColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
             ),
@@ -110,7 +117,10 @@ fun HomeScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        FilledTonalButton(onClick = onEditPet) {
+                        FilledTonalButton(
+                            onClick = onEditPet,
+                            modifier = Modifier.testTag(IviTestTags.HOME_EDIT_PET_BUTTON),
+                        ) {
                             Icon(Icons.Outlined.Edit, contentDescription = null)
                             Text(stringResource(R.string.common_edit))
                         }
@@ -140,7 +150,9 @@ fun HomeScreen(
 
         uiState.conflictBanner?.let { banner ->
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(IviTestTags.HOME_CONFLICT_CARD),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.42f),
                 ),
@@ -174,7 +186,10 @@ fun HomeScreen(
                         text = stringResource(R.string.home_conflicts_body),
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    FilledTonalButton(onClick = onOpenConflicts) {
+                    FilledTonalButton(
+                        onClick = onOpenConflicts,
+                        modifier = Modifier.testTag(IviTestTags.HOME_OPEN_CONFLICTS_BUTTON),
+                    ) {
                         Text(stringResource(R.string.home_conflicts_open))
                     }
                 }
@@ -244,6 +259,7 @@ fun HomeScreen(
                     HomeEmptyState(
                         title = stringResource(R.string.home_no_active_events_title),
                         body = stringResource(R.string.home_no_active_events),
+                        modifier = Modifier.testTag(IviTestTags.HOME_NO_ACTIVE_EVENTS),
                     )
                 } else {
                     uiState.activeEvents.forEach { item ->
@@ -267,16 +283,19 @@ fun HomeScreen(
                 icon = Icons.Outlined.FitnessCenter,
                 label = stringResource(R.string.home_add_event),
                 onClick = onAddEvent,
+                modifier = Modifier.testTag(IviTestTags.HOME_ADD_EVENT_BUTTON),
             )
             HomeQuickAction(
                 icon = Icons.Outlined.MonitorWeight,
                 label = stringResource(R.string.nav_weight),
                 onClick = onOpenWeight,
+                modifier = Modifier.testTag(IviTestTags.HOME_OPEN_WEIGHT_BUTTON),
             )
             HomeQuickAction(
                 icon = Icons.Outlined.Settings,
                 label = stringResource(R.string.nav_settings),
                 onClick = onOpenSettings,
+                modifier = Modifier.testTag(IviTestTags.HOME_OPEN_SETTINGS_BUTTON),
             )
         }
     }
@@ -288,7 +307,11 @@ private fun PetPhoto(
     petName: String,
     onPickPhoto: () -> Unit,
 ) {
-    Box(modifier = Modifier.size(116.dp)) {
+    Box(
+        modifier = Modifier
+            .size(116.dp)
+            .testTag(IviTestTags.HOME_PET_PHOTO),
+    ) {
         if (photoUri.isNullOrBlank()) {
             Surface(
                 modifier = Modifier
@@ -405,8 +428,9 @@ private fun HomeQuickAction(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    FilledTonalButton(onClick = onClick, modifier = Modifier.width(150.dp)) {
+    FilledTonalButton(onClick = onClick, modifier = modifier.width(150.dp)) {
         Icon(icon, contentDescription = null)
         Text(text = label)
     }
@@ -416,8 +440,9 @@ private fun HomeQuickAction(
 private fun HomeEmptyState(
     title: String,
     body: String,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(text = title, style = MaterialTheme.typography.titleMedium)
         Text(text = body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

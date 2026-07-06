@@ -22,11 +22,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.ekrupin.ivi.R
 import ru.ekrupin.ivi.core.ui.DatePickerField
+import ru.ekrupin.ivi.core.ui.IviTestTags
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
 import ru.ekrupin.ivi.core.util.toDisplayDate
 import java.time.LocalDate
@@ -74,6 +76,7 @@ fun EventEditScreen(
             if (uiState.existingEvent == null) R.string.event_edit_title_new
             else R.string.event_edit_title_existing,
         ),
+        modifier = androidx.compose.ui.Modifier.testTag(IviTestTags.EVENT_EDIT_ROOT),
     ) {
         if (uiState.eventTypes.isEmpty()) {
             Text(stringResource(R.string.event_no_types))
@@ -136,7 +139,9 @@ fun EventEditScreen(
                     value = comment,
                     onValueChange = { comment = it },
                     label = { Text(stringResource(R.string.event_comment_label)) },
-                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                    modifier = androidx.compose.ui.Modifier
+                        .fillMaxWidth()
+                        .testTag(IviTestTags.EVENT_COMMENT_FIELD),
                 )
             }
         }
@@ -198,24 +203,30 @@ fun EventEditScreen(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = {
-                typeError = selectedTypeId == null
-                if (!typeError) {
-                    viewModel.saveEvent(
-                        selectedTypeId = selectedTypeId!!,
-                        eventDate = eventDate,
-                        dueDate = if (useAutomaticDueDate) null else dueDate,
-                        comment = comment.trim(),
-                        notificationsEnabled = notificationsEnabled,
-                        status = status,
-                        defaultDurationDays = selectedType?.defaultDurationDays,
-                    )
-                }
-            }) {
+            Button(
+                onClick = {
+                    typeError = selectedTypeId == null
+                    if (!typeError) {
+                        viewModel.saveEvent(
+                            selectedTypeId = selectedTypeId!!,
+                            eventDate = eventDate,
+                            dueDate = if (useAutomaticDueDate) null else dueDate,
+                            comment = comment.trim(),
+                            notificationsEnabled = notificationsEnabled,
+                            status = status,
+                            defaultDurationDays = selectedType?.defaultDurationDays,
+                        )
+                    }
+                },
+                modifier = androidx.compose.ui.Modifier.testTag(IviTestTags.EVENT_SAVE_BUTTON),
+            ) {
                 Text(stringResource(R.string.common_save))
             }
             if (isEditing) {
-                OutlinedButton(onClick = viewModel::deleteEvent) {
+                OutlinedButton(
+                    onClick = viewModel::deleteEvent,
+                    modifier = androidx.compose.ui.Modifier.testTag(IviTestTags.EVENT_DELETE_BUTTON),
+                ) {
                     Text(stringResource(R.string.common_delete))
                 }
             }

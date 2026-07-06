@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -25,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.ekrupin.ivi.R
 import ru.ekrupin.ivi.core.ui.DatePickerField
+import ru.ekrupin.ivi.core.ui.IviTestTags
 import ru.ekrupin.ivi.core.ui.InfoCard
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
 import ru.ekrupin.ivi.core.util.parseWeightInputToGrams
@@ -37,12 +39,18 @@ fun WeightScreen(viewModel: WeightViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
 
-    ScreenScaffold(title = stringResource(R.string.weight_title)) {
+    ScreenScaffold(
+        title = stringResource(R.string.weight_title),
+        modifier = Modifier.testTag(IviTestTags.WEIGHT_ROOT),
+    ) {
         InfoCard(
             title = stringResource(R.string.home_current_weight),
             body = uiState.currentWeightLabel,
         )
-        Button(onClick = { showDialog = true }) {
+        Button(
+            onClick = { showDialog = true },
+            modifier = Modifier.testTag(IviTestTags.WEIGHT_ADD_BUTTON),
+        ) {
             Text(stringResource(R.string.weight_add))
         }
         if (uiState.history.isEmpty()) {
@@ -126,6 +134,7 @@ private fun AddWeightDialog(
                     },
                     label = { Text(stringResource(R.string.weight_value_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.testTag(IviTestTags.WEIGHT_VALUE_FIELD),
                     supportingText = {
                         if (weightError) Text(stringResource(R.string.validation_weight_invalid))
                     },
@@ -135,17 +144,21 @@ private fun AddWeightDialog(
                     value = comment,
                     onValueChange = { comment = it },
                     label = { Text(stringResource(R.string.weight_comment_label)) },
+                    modifier = Modifier.testTag(IviTestTags.WEIGHT_COMMENT_FIELD),
                 )
             }
         },
         confirmButton = {
-            Button(onClick = {
-                val parsedWeight = parseWeightInputToGrams(weight)
-                weightError = parsedWeight == null
-                if (parsedWeight != null) {
-                    onSave(date, parsedWeight, comment.trim())
-                }
-            }) {
+            Button(
+                onClick = {
+                    val parsedWeight = parseWeightInputToGrams(weight)
+                    weightError = parsedWeight == null
+                    if (parsedWeight != null) {
+                        onSave(date, parsedWeight, comment.trim())
+                    }
+                },
+                modifier = Modifier.testTag(IviTestTags.WEIGHT_SAVE_BUTTON),
+            ) {
                 Text(stringResource(R.string.common_save))
             }
         },

@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,6 +45,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import ru.ekrupin.ivi.R
+import ru.ekrupin.ivi.core.ui.IviTestTags
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
 
 @Composable
@@ -100,9 +102,14 @@ fun SettingsScreen(
         false
     }
 
-    ScreenScaffold(title = stringResource(R.string.settings_title)) {
+    ScreenScaffold(
+        title = stringResource(R.string.settings_title),
+        modifier = Modifier.testTag(IviTestTags.SETTINGS_ROOT),
+    ) {
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(IviTestTags.SETTINGS_SYNC_SECTION),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.32f),
@@ -229,7 +236,9 @@ fun SettingsScreen(
                     value = syncUiState.baseUrl,
                     onValueChange = viewModel::updateSyncBaseUrl,
                     label = { Text(stringResource(R.string.settings_sync_base_url)) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(IviTestTags.SETTINGS_SYNC_BASE_URL_FIELD),
                     singleLine = true,
                 )
                 when (val connection = syncUiState.connectionStatus) {
@@ -237,18 +246,21 @@ fun SettingsScreen(
                         Text(
                             text = stringResource(R.string.settings_sync_not_configured),
                             style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.testTag(IviTestTags.SETTINGS_CONNECTION_STATUS),
                         )
                     }
                     is ConnectionStatus.NotConnected -> {
                         Text(
                             text = stringResource(R.string.settings_sync_not_connected, connection.backendUrl),
                             style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.testTag(IviTestTags.SETTINGS_CONNECTION_STATUS),
                         )
                     }
                     ConnectionStatus.Loading -> {
                         Text(
                             text = stringResource(R.string.settings_sync_connecting),
                             style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.testTag(IviTestTags.SETTINGS_CONNECTION_STATUS),
                         )
                     }
                     is ConnectionStatus.Connected -> {
@@ -258,6 +270,7 @@ fun SettingsScreen(
                                 connection.displayName ?: connection.email,
                             ),
                             style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.testTag(IviTestTags.SETTINGS_CONNECTION_STATUS),
                         )
                     }
                     is ConnectionStatus.Error -> {
@@ -265,6 +278,7 @@ fun SettingsScreen(
                             text = connection.message,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.testTag(IviTestTags.SETTINGS_CONNECTION_STATUS),
                         )
                     }
                 }
@@ -273,21 +287,27 @@ fun SettingsScreen(
                         value = syncUiState.email,
                         onValueChange = viewModel::updateEmail,
                         label = { Text(stringResource(R.string.settings_sync_email)) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(IviTestTags.SETTINGS_SYNC_EMAIL_FIELD),
                         singleLine = true,
                     )
                     OutlinedTextField(
                         value = syncUiState.displayName,
                         onValueChange = viewModel::updateDisplayName,
                         label = { Text(stringResource(R.string.settings_sync_display_name)) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(IviTestTags.SETTINGS_SYNC_DISPLAY_NAME_FIELD),
                         singleLine = true,
                     )
                     OutlinedTextField(
                         value = syncUiState.password,
                         onValueChange = viewModel::updatePassword,
                         label = { Text(stringResource(R.string.settings_sync_password)) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(IviTestTags.SETTINGS_SYNC_PASSWORD_FIELD),
                         singleLine = true,
                     )
                 }
@@ -304,10 +324,13 @@ fun SettingsScreen(
                         is SyncStatus.Error -> MaterialTheme.colorScheme.error
                         else -> MaterialTheme.colorScheme.onSurface
                     },
+                    modifier = Modifier.testTag(IviTestTags.SETTINGS_SYNC_STATUS),
                 )
                 if (syncUiState.status == SyncStatus.RequiresBootstrap || syncUiState.status == SyncStatus.NoServerPet) {
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(IviTestTags.SETTINGS_NO_SERVER_PET_CARD),
                         colors = CardDefaults.cardColors(
                             containerColor = if (syncUiState.status == SyncStatus.NoServerPet) {
                                 MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.45f)
@@ -340,7 +363,9 @@ fun SettingsScreen(
                                 FilledTonalButton(
                                     onClick = viewModel::publishLocalDataToServer,
                                     enabled = syncUiState.isConnected && syncUiState.status != SyncStatus.Running,
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag(IviTestTags.SETTINGS_PUBLISH_LOCAL_BUTTON),
                                 ) {
                                     Text(stringResource(R.string.settings_sync_publish_local))
                                 }
@@ -348,7 +373,9 @@ fun SettingsScreen(
                                     OutlinedButton(
                                         onClick = viewModel::replaceLocalDataFromServer,
                                         enabled = syncUiState.isConnected && syncUiState.status != SyncStatus.Running,
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .testTag(IviTestTags.SETTINGS_REPLACE_FROM_SERVER_BUTTON),
                                     ) {
                                         Text(stringResource(R.string.settings_sync_replace_from_server))
                                     }
@@ -365,7 +392,9 @@ fun SettingsScreen(
                 }
                 if (syncUiState.conflictCount > 0) {
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(IviTestTags.SETTINGS_CONFLICT_CARD),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
                         ),
@@ -382,7 +411,10 @@ fun SettingsScreen(
                                 text = stringResource(R.string.settings_sync_conflicts_body),
                                 style = MaterialTheme.typography.bodySmall,
                             )
-                            OutlinedButton(onClick = onOpenConflicts) {
+                            OutlinedButton(
+                                onClick = onOpenConflicts,
+                                modifier = Modifier.testTag(IviTestTags.SETTINGS_OPEN_CONFLICTS_BUTTON),
+                            ) {
                                 Text(stringResource(R.string.settings_sync_conflicts_open))
                             }
                         }
@@ -390,7 +422,9 @@ fun SettingsScreen(
                 }
                 if (syncUiState.isConnected) {
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(IviTestTags.INVITE_SECTION),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
                         ),
@@ -411,19 +445,23 @@ fun SettingsScreen(
                                 PetAccessUiState.Unknown -> Text(
                                     text = stringResource(R.string.settings_pet_access_loading),
                                     style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.testTag(IviTestTags.PET_ACCESS_STATUS),
                                 )
                                 PetAccessUiState.Loading -> Text(
                                     text = stringResource(R.string.settings_pet_access_loading),
                                     style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.testTag(IviTestTags.PET_ACCESS_STATUS),
                                 )
                                 PetAccessUiState.NoServerPet -> Text(
                                     text = stringResource(R.string.settings_pet_access_no_server_pet),
                                     style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.testTag(IviTestTags.PET_ACCESS_STATUS),
                                 )
                                 is PetAccessUiState.Known -> {
                                     Text(
                                         text = stringResource(R.string.settings_pet_access_pet, petAccess.petName),
                                         style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.testTag(IviTestTags.PET_ACCESS_STATUS),
                                     )
                                     Text(
                                         text = stringResource(R.string.settings_pet_access_role, petAccess.role.label()),
@@ -435,14 +473,18 @@ fun SettingsScreen(
                                 FilledTonalButton(
                                     onClick = viewModel::createInvite,
                                     enabled = syncUiState.status != SyncStatus.Running && syncUiState.inviteStatus != InviteStatus.Loading,
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag(IviTestTags.CREATE_INVITE_BUTTON),
                                 ) {
                                     Text(stringResource(R.string.settings_invite_create))
                                 }
                                 OutlinedButton(
                                     onClick = viewModel::leaveSharedPet,
                                     enabled = syncUiState.status != SyncStatus.Running && syncUiState.leavePetStatus != LeavePetStatus.Loading,
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag(IviTestTags.LEAVE_PET_BUTTON),
                                 ) {
                                     Text(stringResource(R.string.settings_leave_owner_pet))
                                 }
@@ -454,7 +496,9 @@ fun SettingsScreen(
                                 OutlinedButton(
                                     onClick = viewModel::leaveSharedPet,
                                     enabled = syncUiState.status != SyncStatus.Running && syncUiState.leavePetStatus != LeavePetStatus.Loading,
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag(IviTestTags.LEAVE_PET_BUTTON),
                                 ) {
                                     Text(stringResource(R.string.settings_leave_shared_pet))
                                 }
@@ -463,13 +507,17 @@ fun SettingsScreen(
                                 value = syncUiState.inviteCode,
                                 onValueChange = viewModel::updateInviteCode,
                                 label = { Text(stringResource(R.string.settings_invite_code)) },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag(IviTestTags.ACCEPT_INVITE_CODE_FIELD),
                                 singleLine = true,
                             )
                             OutlinedButton(
                                 onClick = viewModel::acceptInvite,
                                 enabled = syncUiState.inviteCode.isNotBlank() && syncUiState.inviteStatus != InviteStatus.Loading && syncUiState.leavePetStatus != LeavePetStatus.Loading,
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag(IviTestTags.ACCEPT_INVITE_BUTTON),
                             ) {
                                 Text(stringResource(R.string.settings_invite_accept))
                             }
@@ -493,7 +541,9 @@ fun SettingsScreen(
                                         OutlinedButton(
                                             onClick = { viewModel.transferOwnerAndLeave(candidate.id) },
                                             enabled = syncUiState.status != SyncStatus.Running,
-                                            modifier = Modifier.fillMaxWidth(),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .testTag(IviTestTags.TRANSFER_OWNER_BUTTON_PREFIX + candidate.id),
                                         ) {
                                             Text(candidate.label())
                                         }
@@ -508,7 +558,9 @@ fun SettingsScreen(
                                     OutlinedButton(
                                         onClick = viewModel::deletePetAndLeave,
                                         enabled = syncUiState.status != SyncStatus.Running,
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .testTag(IviTestTags.DELETE_PET_CONFIRM_BUTTON),
                                     ) {
                                         Text(stringResource(R.string.settings_leave_owner_delete_confirm))
                                     }
@@ -530,13 +582,16 @@ fun SettingsScreen(
                                         Text(
                                             text = stringResource(R.string.settings_invite_created, inviteStatus.code),
                                             style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.testTag(IviTestTags.INVITE_CODE_TEXT),
                                         )
                                     }
                                     OutlinedButton(
                                         onClick = {
                                             clipboardManager.setText(AnnotatedString(inviteStatus.code))
                                         },
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .testTag(IviTestTags.INVITE_COPY_BUTTON),
                                     ) {
                                         Text(stringResource(R.string.common_copy))
                                     }
@@ -564,12 +619,14 @@ fun SettingsScreen(
                         FilledTonalButton(
                             onClick = viewModel::login,
                             enabled = syncUiState.baseUrl.isNotBlank() && syncUiState.email.isNotBlank() && syncUiState.password.isNotBlank() && syncUiState.status != SyncStatus.Running,
+                            modifier = Modifier.testTag(IviTestTags.SETTINGS_LOGIN_BUTTON),
                         ) {
                             Text(stringResource(R.string.settings_sync_login))
                         }
                         OutlinedButton(
                             onClick = viewModel::register,
                             enabled = syncUiState.baseUrl.isNotBlank() && syncUiState.email.isNotBlank() && syncUiState.password.isNotBlank() && syncUiState.displayName.isNotBlank() && syncUiState.status != SyncStatus.Running,
+                            modifier = Modifier.testTag(IviTestTags.SETTINGS_REGISTER_BUTTON),
                         ) {
                             Text(stringResource(R.string.settings_sync_register))
                         }
@@ -578,7 +635,9 @@ fun SettingsScreen(
                     OutlinedButton(
                         onClick = viewModel::logout,
                         enabled = syncUiState.status != SyncStatus.Running,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(IviTestTags.SETTINGS_LOGOUT_BUTTON),
                     ) {
                         Text(stringResource(R.string.settings_sync_logout))
                     }
@@ -586,7 +645,9 @@ fun SettingsScreen(
                 FilledTonalButton(
                     onClick = viewModel::runSync,
                     enabled = syncUiState.isConnected && syncUiState.status != SyncStatus.Running,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(IviTestTags.SETTINGS_MANUAL_SYNC_BUTTON),
                 ) {
                     Text(
                         text = if (syncUiState.status == SyncStatus.Running) {

@@ -20,11 +20,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.ekrupin.ivi.R
+import ru.ekrupin.ivi.core.ui.IviTestTags
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
 import ru.ekrupin.ivi.core.util.labelRes
 import ru.ekrupin.ivi.domain.model.EventCategory
@@ -36,12 +38,16 @@ fun EventTypesScreen(viewModel: EventTypesViewModel = hiltViewModel()) {
     var editingType by remember { mutableStateOf<EventType?>(null) }
     var showDialog by remember { mutableStateOf(false) }
 
-    ScreenScaffold(title = stringResource(R.string.event_types_title)) {
+    ScreenScaffold(
+        title = stringResource(R.string.event_types_title),
+        modifier = Modifier.testTag(IviTestTags.EVENT_TYPES_ROOT),
+    ) {
         Button(
             onClick = {
                 editingType = null
                 showDialog = true
             },
+            modifier = Modifier.testTag(IviTestTags.EVENT_TYPE_ADD_BUTTON),
         ) {
             Text(stringResource(R.string.event_type_add))
         }
@@ -129,6 +135,7 @@ private fun EventTypeDialog(
                         if (showNameError) Text(stringResource(R.string.validation_name_required))
                     },
                     isError = showNameError,
+                    modifier = Modifier.testTag(IviTestTags.EVENT_TYPE_NAME_FIELD),
                 )
                 Text(stringResource(R.string.event_type_category_label))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -164,14 +171,17 @@ private fun EventTypeDialog(
                         Text(stringResource(R.string.common_delete))
                     }
                 }
-                Button(onClick = {
-                    val parsedDuration = duration.takeIf { it.isNotBlank() }?.toIntOrNull()
-                    when {
-                        name.isBlank() -> showNameError = true
-                        duration.isNotBlank() && parsedDuration == null -> showDurationError = true
-                        else -> onSave(initialType?.id ?: 0L, name.trim(), selectedCategory, parsedDuration, active)
-                    }
-                }) {
+                Button(
+                    onClick = {
+                        val parsedDuration = duration.takeIf { it.isNotBlank() }?.toIntOrNull()
+                        when {
+                            name.isBlank() -> showNameError = true
+                            duration.isNotBlank() && parsedDuration == null -> showDurationError = true
+                            else -> onSave(initialType?.id ?: 0L, name.trim(), selectedCategory, parsedDuration, active)
+                        }
+                    },
+                    modifier = Modifier.testTag(IviTestTags.EVENT_TYPE_SAVE_BUTTON),
+                ) {
                     Text(stringResource(R.string.common_save))
                 }
             }

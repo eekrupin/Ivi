@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -51,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import ru.ekrupin.ivi.R
 import ru.ekrupin.ivi.core.ui.DatePickerField
+import ru.ekrupin.ivi.core.ui.IviTestTags
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
 import ru.ekrupin.ivi.core.util.copyPickedPetPhoto
 import ru.ekrupin.ivi.core.util.deleteManagedPetPhoto
@@ -99,7 +101,10 @@ fun PetEditScreen(
             }
     }
 
-    ScreenScaffold(title = stringResource(R.string.pet_edit_screen_title)) {
+    ScreenScaffold(
+        title = stringResource(R.string.pet_edit_screen_title),
+        modifier = Modifier.testTag(IviTestTags.PET_EDIT_ROOT),
+    ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -144,7 +149,9 @@ fun PetEditScreen(
                     },
                     isError = nameError,
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(IviTestTags.PET_EDIT_NAME_FIELD),
                 )
 
                 DatePickerField(
@@ -157,11 +164,14 @@ fun PetEditScreen(
                 )
 
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FilledTonalButton(onClick = {
-                        photoPickerLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                        )
-                    }) {
+                    FilledTonalButton(
+                        onClick = {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                            )
+                        },
+                        modifier = Modifier.testTag(IviTestTags.PET_EDIT_CHANGE_PHOTO_BUTTON),
+                    ) {
                         Icon(Icons.Outlined.PhotoCamera, contentDescription = null)
                         Text(
                             if (photoUri.isNullOrBlank()) stringResource(R.string.pet_photo_pick)
@@ -170,12 +180,15 @@ fun PetEditScreen(
                     }
 
                     if (!photoUri.isNullOrBlank()) {
-                        OutlinedButton(onClick = {
-                            if (photoUri != originalPhotoUri) {
-                                context.deleteManagedPetPhoto(photoUri)
-                            }
-                            photoUri = null
-                        }) {
+                        OutlinedButton(
+                            onClick = {
+                                if (photoUri != originalPhotoUri) {
+                                    context.deleteManagedPetPhoto(photoUri)
+                                }
+                                photoUri = null
+                            },
+                            modifier = Modifier.testTag(IviTestTags.PET_EDIT_REMOVE_PHOTO_BUTTON),
+                        ) {
                             Icon(Icons.Outlined.DeleteOutline, contentDescription = null)
                             Text(stringResource(R.string.pet_photo_delete))
                         }
@@ -196,6 +209,7 @@ fun PetEditScreen(
                     viewModel.savePet(normalizedName, birthDate, photoUri)
                 }
             },
+            saveModifier = Modifier.testTag(IviTestTags.PET_EDIT_SAVE_BUTTON),
             onCancel = {
                 if (!saveCommitted && photoUri != originalPhotoUri) {
                     context.deleteManagedPetPhoto(photoUri)
@@ -216,6 +230,7 @@ private fun EditablePetPhoto(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag(IviTestTags.PET_EDIT_PHOTO_AREA)
                 .clickable(onClick = onPickPhoto),
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surface,
@@ -258,6 +273,7 @@ private fun EditablePetPhoto(
         contentScale = ContentScale.Crop,
         modifier = Modifier
             .fillMaxWidth()
+            .testTag(IviTestTags.PET_EDIT_PHOTO_AREA)
             .size(240.dp)
             .clip(RoundedCornerShape(28.dp))
             .clickable(onClick = onPickPhoto),
@@ -267,10 +283,11 @@ private fun EditablePetPhoto(
 @Composable
 private fun RowActions(
     onSave: () -> Unit,
+    saveModifier: Modifier = Modifier,
     onCancel: () -> Unit,
 ) {
     androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Button(onClick = onSave) {
+        Button(onClick = onSave, modifier = saveModifier) {
             Icon(Icons.Outlined.Edit, contentDescription = null)
             Text(stringResource(R.string.common_save))
         }
