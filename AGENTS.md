@@ -35,9 +35,12 @@
 - Текущий статус, ближайшие шаги и отложенные задачи: `docs/project/roadmap.md`.
 
 ## Текущий фокус
-- Довести device-level Android E2E против локального backend.
-- Проверить login/register, sync, invite visibility, conflict card и conflict resolver на эмуляторе/устройстве.
-- Затем усиливать conflict flow, тексты, тесты и background orchestration без пересборки базового контракта.
+- Stabilization / release candidate pass: не добавлять крупные новые фичи, проверять и фиксировать только реальные дефекты ownership, invite, leave/delete, owner transfer, photo sync и conflict flow.
+- Критичные инварианты: у активного питомца всегда есть OWNER; MEMBER может выйти без удаления питомца для других; OWNER не может оставить питомца без владельца; transfer разрешён только активному участнику; delete серверного питомца разрешён только единственному OWNER после явного действия; stale invite к удалённому/недоступному питомцу не должен подключать пользователя; после leave/delete sync не должен возвращать старого питомца.
+- Реализованные и проверяемые сценарии: синхронизация между устройствами, приглашение по коду, выход из синхронизации, отключение пользователя от питомца, удаление питомца единственным владельцем, передача прав владельца при выходе OWNER, синхронизация фото питомца.
+- Последний stabilization pass добавил targeted backend integration tests для ownership/invite/photo и Android unit tests для no-server-pet/photo sync behavior; HTTP E2E подтвердил invite accept/repeat, owner transfer, member leave, запрет delete при active member, single-owner delete, stale invite и photo upload/download/delete.
+- Ограничения после pass: device-level smoke через `wadb` частичный из-за хрупких координат Compose UI без test tags; Docker в текущей WSL-среде недоступен, поэтому backend PostgreSQL Testcontainers tests компилируются и skip локально, а полноценно выполняются при доступном Docker daemon.
+- Следующий шаг перед первой beta: добавить стабильные Compose test tags или instrumentation сценарий для двухдевайсного E2E, затем повторить полный device smoke A-D на чистой backend DB.
 
 ## Основные команды
 Android из корня репозитория:

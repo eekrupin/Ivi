@@ -8,6 +8,7 @@ import ru.ekrupin.ivi.data.local.entity.SyncOutboxEntity
 import ru.ekrupin.ivi.data.sync.model.SyncEntityType
 import ru.ekrupin.ivi.data.sync.model.SyncOperation
 import ru.ekrupin.ivi.data.sync.model.SyncOutboxStatus
+import ru.ekrupin.ivi.data.sync.remote.SyncHttpException
 import java.time.LocalDateTime
 
 class RunFullSyncUseCaseTest {
@@ -89,6 +90,45 @@ class RunFullSyncUseCaseTest {
         assertEquals(SyncRunResult.ConflictsDetected, result)
     }
 
+    @Test
+    fun noServerPet_isReturnedAndPhotoSyncDoesNotRun() = runBlocking {
+        val engine = FakeSyncEngine().apply {
+            changesError = SyncHttpException(404, "current_pet_not_found")
+        }
+        val photoSyncer = FakePetPhotoSnapshotSyncer()
+        val useCase = RunFullSyncUseCase(
+            engine,
+            FakeSyncStateStore(cursor = "changes:1000"),
+            FakeSyncOutboxStore(),
+            photoSyncer,
+        )
+
+        val result = useCase("http://localhost:8080", "token")
+
+        assertEquals(SyncRunResult.NoServerPet, result)
+        assertEquals(1, engine.changesCalls)
+        assertEquals(0, photoSyncer.calls)
+    }
+
+    @Test
+    fun photoSnapshotFailure_doesNotBreakSuccessfulDomainSync() = runBlocking {
+        val photoSyncer = FakePetPhotoSnapshotSyncer(throwOnSync = true)
+        val useCase = RunFullSyncUseCase(
+            FakeSyncEngine(),
+            FakeSyncStateStore(cursor = "changes:1000"),
+            FakeSyncOutboxStore(),
+            photoSyncer,
+        )
+
+        val result = useCase("http://localhost:8080", "token")
+
+        assertEquals(1, photoSyncer.calls)
+        assertEquals(
+            SyncRunResult.Success(bootstrapPerformed = false, pushPerformed = false, changesPerformed = true),
+            result,
+        )
+    }
+
     private fun fakeOutboxItem() = SyncOutboxEntity(
         id = 1,
         entityType = SyncEntityType.EVENT_TYPE,
@@ -109,6 +149,7 @@ private class FakeSyncEngine : SyncEngine {
     var changesCalls = 0
     var pushCalls = 0
     var pushResult: PushDrainResult = PushDrainResult.Empty
+    var changesError: Exception? = null
 
     override suspend fun bootstrapImport(baseUrl: String, accessToken: String) {
         bootstrapCalls += 1
@@ -116,6 +157,7 @@ private class FakeSyncEngine : SyncEngine {
 
     override suspend fun pullChanges(baseUrl: String, accessToken: String) {
         changesCalls += 1
+        changesError?.let { throw it }
     }
 
     override suspend fun drainOutbox(baseUrl: String, accessToken: String, deviceId: String, limit: Int): PushDrainResult {
@@ -124,10 +166,13 @@ private class FakeSyncEngine : SyncEngine {
     }
 }
 
-private class FakePetPhotoSnapshotSyncer : PetPhotoSnapshotSyncer {
+private class FakePetPhotoSnapshotSyncer(
+    private val throwOnSync: Boolean = false,
+) : PetPhotoSnapshotSyncer {
     var calls = 0
 
     override suspend fun syncAfterPetSnapshot(baseUrl: String, accessToken: String) {
         calls += 1
+        if (throwOnSync) error("photo sync failed")
     }
 }

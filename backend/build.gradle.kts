@@ -15,6 +15,7 @@ val hikariVersion = "6.2.1"
 val postgresVersion = "42.7.5"
 val jwtVersion = "4.4.0"
 val bcryptVersion = "0.4"
+val testcontainersVersion = "1.20.4"
 
 repositories {
     mavenCentral()
@@ -52,4 +53,6 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
 
     testImplementation(kotlin("test"))
+    testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
+    testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
 }
