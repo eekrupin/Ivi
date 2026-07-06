@@ -172,4 +172,9 @@ class PetAccessService(
             throw ApiException(HttpStatusCode.Forbidden, "owner_required", "Для этого действия нужен доступ OWNER")
         }
     }
+
+    fun requireActiveAccess(petId: UUID, userId: UUID) {
+        petMembershipRepository.findActiveByPetAndUser(petId, userId)
+            ?: throw ApiException(HttpStatusCode.Forbidden, "pet_forbidden", "Нет доступа к питомцу")
+    }
 }

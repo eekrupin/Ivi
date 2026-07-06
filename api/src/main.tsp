@@ -34,6 +34,11 @@ scalar InviteCode extends string;
 @maxLength(160)
 scalar PhotoRevision extends string;
 
+union PhotoContentType {
+  "image/jpeg",
+  "image/png",
+}
+
 @minValue(0)
 @maxValue(4294967295)
 scalar ArgbColor extends int64;
@@ -482,6 +487,12 @@ model PhotoUploadResponse {
   status: PhotoUploadStatus;
 }
 
+model PhotoDownloadResponse {
+  @statusCode statusCode: 200;
+  @header contentType: PhotoContentType;
+  @body body: bytes;
+}
+
 model PhotoDeleteResponse {
   @statusCode statusCode: 200;
   petId: Uuid;
@@ -569,9 +580,15 @@ namespace SyncApi {
 @tag("Photo")
 @route("/v1/pets")
 namespace PetPhotoApi {
+  @get
+  @route("/{petId}/photo")
+  @doc("Downloads the current pet photo bytes. The response Content-Type is image/jpeg or image/png, matching the stored photo.")
+  op downloadPhoto(@path petId: Uuid, @query revision?: PhotoRevision): PhotoDownloadResponse | UnauthorizedError | ForbiddenError | NotFoundError;
+
   @put
   @route("/{petId}/photo")
-  op uploadPhoto(@path petId: Uuid, @header contentType: string, @body body: bytes): PhotoUploadResponse | BadRequestError | UnauthorizedError | ForbiddenError | NotFoundError;
+  @doc("Uploads a pet photo. Only image/jpeg and image/png request Content-Type values are accepted.")
+  op uploadPhoto(@path petId: Uuid, @header contentType: PhotoContentType, @body body: bytes): PhotoUploadResponse | BadRequestError | UnauthorizedError | ForbiddenError | NotFoundError;
 
   @delete
   @route("/{petId}/photo")

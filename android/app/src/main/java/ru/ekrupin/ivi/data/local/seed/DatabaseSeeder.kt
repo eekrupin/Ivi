@@ -47,6 +47,7 @@ class DatabaseSeeder @Inject constructor(
                     name = "Иви",
                     birthDate = today.minusYears(3).minusMonths(2),
                     photoUri = null,
+                    photoRevision = null,
                     createdAt = now,
                     updatedAt = now,
                 ),

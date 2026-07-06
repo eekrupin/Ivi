@@ -92,6 +92,7 @@ class RoomSyncSnapshotStore @Inject constructor(
                 name = pet.name,
                 birthDate = pet.birthDate,
                 photoUri = existing?.photoUri,
+                photoRevision = pet.photoRevision,
                 createdAt = pet.createdAt,
                 updatedAt = pet.serverUpdatedAt,
                 remoteId = pet.remoteId,

@@ -21,6 +21,7 @@ class SyncPayloadFactoryTest {
         name = "Иви",
         birthDate = null,
         photoUri = null,
+        photoRevision = null,
         createdAt = now,
         updatedAt = now,
         remoteId = "11111111-1111-1111-1111-111111111111",

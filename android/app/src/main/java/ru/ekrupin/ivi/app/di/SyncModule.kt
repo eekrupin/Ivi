@@ -12,7 +12,9 @@ import java.util.concurrent.TimeUnit
 import ru.ekrupin.ivi.data.auth.remote.AuthRemoteDataSource
 import ru.ekrupin.ivi.data.auth.remote.OkHttpAuthRemoteDataSource
 import ru.ekrupin.ivi.data.pet.remote.OkHttpPetAccessRemoteDataSource
+import ru.ekrupin.ivi.data.pet.remote.OkHttpPetPhotoRemoteDataSource
 import ru.ekrupin.ivi.data.pet.remote.PetAccessRemoteDataSource
+import ru.ekrupin.ivi.data.pet.remote.PetPhotoRemoteDataSource
 import ru.ekrupin.ivi.data.sync.config.DataStoreSyncSessionStore
 import ru.ekrupin.ivi.data.sync.config.SyncSessionStore
 import ru.ekrupin.ivi.data.sync.RoomSyncPushApplier
@@ -21,6 +23,8 @@ import ru.ekrupin.ivi.data.sync.RoomSyncStateStore
 import ru.ekrupin.ivi.data.sync.SyncCoordinator
 import ru.ekrupin.ivi.data.sync.SyncEngine
 import ru.ekrupin.ivi.data.sync.FullSyncRunner
+import ru.ekrupin.ivi.data.sync.PetPhotoSnapshotSyncer
+import ru.ekrupin.ivi.data.sync.PetPhotoSyncCoordinator
 import ru.ekrupin.ivi.data.sync.PublishLocalDataToServerRecovery
 import ru.ekrupin.ivi.data.sync.PublishLocalDataToServerUseCase
 import ru.ekrupin.ivi.data.sync.ReplaceLocalDataFromServerRecovery
@@ -71,6 +75,12 @@ object SyncModule {
     @Provides
     fun providePetAccessRemoteDataSource(okHttpClient: OkHttpClient): PetAccessRemoteDataSource =
         OkHttpPetAccessRemoteDataSource(okHttpClient)
+
+    @Provides
+    fun providePetPhotoRemoteDataSource(dataSource: OkHttpPetPhotoRemoteDataSource): PetPhotoRemoteDataSource = dataSource
+
+    @Provides
+    fun providePetPhotoSnapshotSyncer(coordinator: PetPhotoSyncCoordinator): PetPhotoSnapshotSyncer = coordinator
 
     @Provides
     fun provideSyncEngine(coordinator: SyncCoordinator): SyncEngine = coordinator

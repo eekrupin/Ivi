@@ -20,8 +20,9 @@ API-контракт и sync-модель живут отдельно от кл�
 - для syncable-сущностей использовать стабильные UUID;
 - у каждой syncable-записи есть `updatedAt`, `version`, `deletedAt`;
 - `ReminderSettings` не синхронизируются в первом sync-этапе;
-- фото питомца должно идти отдельным binary API, не через JSON sync-поток;
-- текущий Android `photoUri` остается локальным указателем на кэш или локальную копию.
+- фото питомца идет отдельным binary API, не через JSON sync-поток;
+- JSON sync передает только `Pet.photoRevision`, по которому Android понимает, нужно ли скачать или очистить локальный файл;
+- текущий Android `photoUri` остается локальным указателем на кэш или локальную копию, а `photoRevision` фиксирует последнюю скачанную/загруженную серверную ревизию.
 
 ## API sync endpoints
 - `GET /v1/sync/bootstrap`
@@ -45,7 +46,7 @@ API-контракт и sync-модель живут отдельно от кл�
 Android bootstrap import в V1:
 - разрешен только при пустом `sync_outbox`;
 - выполняет authoritative replace server-backed данных;
-- локальный `photoUri` питомца сохраняется.
+- локальный `photoUri` питомца сохраняется до post-sync проверки `photoRevision`, затем фото скачивается отдельным binary-запросом или очищается, если серверная ревизия пустая.
 
 ## Changes
 `changes` работает по модели `(cursor, highWatermark]`:

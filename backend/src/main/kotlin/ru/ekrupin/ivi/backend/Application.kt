@@ -19,6 +19,7 @@ import ru.ekrupin.ivi.backend.db.repository.InviteRepository
 import ru.ekrupin.ivi.backend.db.repository.EventTypeRepository
 import ru.ekrupin.ivi.backend.db.repository.PetMembershipRepository
 import ru.ekrupin.ivi.backend.db.repository.PetEventRepository
+import ru.ekrupin.ivi.backend.db.repository.PetPhotoRepository
 import ru.ekrupin.ivi.backend.db.repository.PetRepository
 import ru.ekrupin.ivi.backend.db.repository.RefreshTokenRepository
 import ru.ekrupin.ivi.backend.db.repository.UserRepository
@@ -26,6 +27,7 @@ import ru.ekrupin.ivi.backend.db.repository.WeightEntryRepository
 import ru.ekrupin.ivi.backend.domain.PetDomainDataService
 import ru.ekrupin.ivi.backend.invite.InviteService
 import ru.ekrupin.ivi.backend.pet.PetAccessService
+import ru.ekrupin.ivi.backend.photo.PhotoService
 import ru.ekrupin.ivi.backend.routing.configureRouting
 import ru.ekrupin.ivi.backend.sync.SyncBootstrapService
 import ru.ekrupin.ivi.backend.sync.SyncChangesService
@@ -76,11 +78,18 @@ fun Application.module() {
     val eventTypeRepository = EventTypeRepository(databaseFactory)
     val petEventRepository = PetEventRepository(databaseFactory)
     val weightEntryRepository = WeightEntryRepository(databaseFactory)
+    val petPhotoRepository = PetPhotoRepository(databaseFactory)
 
     val petDomainDataService = PetDomainDataService(
         eventTypeRepository = eventTypeRepository,
         petEventRepository = petEventRepository,
         weightEntryRepository = weightEntryRepository,
+    )
+
+    val petAccessService = PetAccessService(
+        userRepository = userRepository,
+        petRepository = petRepository,
+        petMembershipRepository = petMembershipRepository,
     )
 
     val dependencies = AppDependencies(
@@ -90,15 +99,15 @@ fun Application.module() {
             passwordHasher = PasswordHasher(),
             tokenService = tokenService,
         ),
-        petAccessService = PetAccessService(
-            userRepository = userRepository,
-            petRepository = petRepository,
-            petMembershipRepository = petMembershipRepository,
-        ),
+        petAccessService = petAccessService,
         inviteService = InviteService(
             petRepository = petRepository,
             petMembershipRepository = petMembershipRepository,
             inviteRepository = inviteRepository,
+        ),
+        photoService = PhotoService(
+            petAccessService = petAccessService,
+            petPhotoRepository = petPhotoRepository,
         ),
         petDomainDataService = petDomainDataService,
         syncBootstrapService = SyncBootstrapService(

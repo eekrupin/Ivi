@@ -34,6 +34,32 @@ async function api(path, { method = 'GET', token, body } = {}) {
   }
 }
 
+async function apiBytes(path, { method = 'GET', token, body, contentType } = {}) {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method,
+    headers: {
+      ...(contentType ? { 'Content-Type': contentType } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body,
+  })
+
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  let json = null
+  const responseContentType = response.headers.get('content-type') ?? ''
+  if (responseContentType.includes('application/json') && bytes.length > 0) {
+    json = JSON.parse(new TextDecoder().decode(bytes))
+  }
+
+  return {
+    status: response.status,
+    ok: response.ok,
+    bytes,
+    json,
+    contentType: responseContentType,
+  }
+}
+
 function expectStatus(response, expected, context) {
   if (response.status !== expected) {
     fail(`${context}: expected ${expected}, got ${response.status}, body=${JSON.stringify(response.json)}`)
@@ -135,6 +161,51 @@ async function main() {
     fail(`current pet membership role mismatch: ${JSON.stringify(currentPet.json)}`)
   }
   step('get_current_pet', { status: 'passed', petId: currentPet.json.pet.id })
+
+  const pngBytes = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D])
+  const uploadPhoto = await apiBytes(`/v1/pets/${petId}/photo`, {
+    method: 'PUT',
+    token: login1Tokens.accessToken,
+    contentType: 'image/png',
+    body: pngBytes,
+  })
+  expectStatus(uploadPhoto, 200, 'upload pet photo')
+  const photoRevision = uploadPhoto.json?.photoRevision
+  if (!photoRevision) {
+    fail(`expected photoRevision after upload, got ${JSON.stringify(uploadPhoto.json)}`)
+  }
+  step('upload_pet_photo', { status: 'passed', photoRevision, uploadStatus: uploadPhoto.json.status })
+
+  const downloadPhoto = await apiBytes(`/v1/pets/${petId}/photo?revision=${encodeURIComponent(photoRevision)}`, {
+    token: login1Tokens.accessToken,
+  })
+  expectStatus(downloadPhoto, 200, 'download pet photo')
+  if (!downloadPhoto.contentType.includes('image/png')) {
+    fail(`expected image/png download content-type, got ${downloadPhoto.contentType}`)
+  }
+  if (downloadPhoto.bytes.length !== pngBytes.length || !downloadPhoto.bytes.every((value, index) => value === pngBytes[index])) {
+    fail('downloaded photo bytes mismatch')
+  }
+  step('download_pet_photo', { status: 'passed', contentType: downloadPhoto.contentType, sizeBytes: downloadPhoto.bytes.length })
+
+  const deletePhoto = await api(`/v1/pets/${petId}/photo`, {
+    method: 'DELETE',
+    token: login1Tokens.accessToken,
+  })
+  expectStatus(deletePhoto, 200, 'delete pet photo')
+  if (deletePhoto.json?.photoRevision !== null || deletePhoto.json?.deleted !== true) {
+    fail(`expected cleared photoRevision after delete, got ${JSON.stringify(deletePhoto.json)}`)
+  }
+  step('delete_pet_photo', { status: 'passed' })
+
+  const downloadDeletedPhoto = await apiBytes(`/v1/pets/${petId}/photo`, {
+    token: login1Tokens.accessToken,
+  })
+  expectStatus(downloadDeletedPhoto, 404, 'download deleted pet photo')
+  if (downloadDeletedPhoto.json?.error?.code !== 'photo_not_found') {
+    fail(`expected photo_not_found after delete, got ${JSON.stringify(downloadDeletedPhoto.json)}`)
+  }
+  step('download_deleted_pet_photo', { status: 'passed', statusCode: downloadDeletedPhoto.status })
 
   const createInvite = await api(`/v1/pets/${petId}/invites`, {
     method: 'POST',

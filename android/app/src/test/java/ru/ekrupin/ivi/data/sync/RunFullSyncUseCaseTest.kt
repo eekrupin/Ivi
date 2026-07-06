@@ -15,13 +15,15 @@ class RunFullSyncUseCaseTest {
     fun firstBootstrap_runsWhenCursorMissingAndOutboxEmpty() = runBlocking {
         val engine = FakeSyncEngine()
         val stateStore = FakeSyncStateStore(cursor = null)
-        val useCase = RunFullSyncUseCase(engine, stateStore, FakeSyncOutboxStore())
+        val photoSyncer = FakePetPhotoSnapshotSyncer()
+        val useCase = RunFullSyncUseCase(engine, stateStore, FakeSyncOutboxStore(), photoSyncer)
 
         val result = useCase("http://localhost:8080", "token")
 
         assertEquals(1, engine.bootstrapCalls)
         assertEquals(0, engine.pushCalls)
         assertEquals(0, engine.changesCalls)
+        assertEquals(1, photoSyncer.calls)
         assertTrue(result is SyncRunResult.Success)
     }
 
@@ -29,13 +31,15 @@ class RunFullSyncUseCaseTest {
     fun ordinaryChangesPull_runsWhenCursorExistsAndOutboxEmpty() = runBlocking {
         val engine = FakeSyncEngine()
         val stateStore = FakeSyncStateStore(cursor = "changes:1000")
-        val useCase = RunFullSyncUseCase(engine, stateStore, FakeSyncOutboxStore())
+        val photoSyncer = FakePetPhotoSnapshotSyncer()
+        val useCase = RunFullSyncUseCase(engine, stateStore, FakeSyncOutboxStore(), photoSyncer)
 
         val result = useCase("http://localhost:8080", "token")
 
         assertEquals(0, engine.bootstrapCalls)
         assertEquals(0, engine.pushCalls)
         assertEquals(1, engine.changesCalls)
+        assertEquals(1, photoSyncer.calls)
         assertTrue(result is SyncRunResult.Success)
     }
 
@@ -46,7 +50,7 @@ class RunFullSyncUseCaseTest {
         }
         val stateStore = FakeSyncStateStore(cursor = "changes:1000")
         val outboxItem = fakeOutboxItem()
-        val useCase = RunFullSyncUseCase(engine, stateStore, FakeSyncOutboxStore(mutableListOf(outboxItem)))
+        val useCase = RunFullSyncUseCase(engine, stateStore, FakeSyncOutboxStore(mutableListOf(outboxItem)), FakePetPhotoSnapshotSyncer())
 
         val result = useCase("http://localhost:8080", "token")
 
@@ -62,7 +66,7 @@ class RunFullSyncUseCaseTest {
             pushResult = PushDrainResult.RequiresBootstrap
         }
         val stateStore = FakeSyncStateStore(cursor = "changes:1000")
-        val useCase = RunFullSyncUseCase(engine, stateStore, FakeSyncOutboxStore(mutableListOf(fakeOutboxItem())))
+        val useCase = RunFullSyncUseCase(engine, stateStore, FakeSyncOutboxStore(mutableListOf(fakeOutboxItem())), FakePetPhotoSnapshotSyncer())
 
         val result = useCase("http://localhost:8080", "token")
 
@@ -76,7 +80,7 @@ class RunFullSyncUseCaseTest {
             pushResult = PushDrainResult.Applied(acceptedCount = 0, conflictCount = 1, cursor = "changes:3000")
         }
         val stateStore = FakeSyncStateStore(cursor = "changes:1000")
-        val useCase = RunFullSyncUseCase(engine, stateStore, FakeSyncOutboxStore(mutableListOf(fakeOutboxItem())))
+        val useCase = RunFullSyncUseCase(engine, stateStore, FakeSyncOutboxStore(mutableListOf(fakeOutboxItem())), FakePetPhotoSnapshotSyncer())
 
         val result = useCase("http://localhost:8080", "token")
 
@@ -117,5 +121,13 @@ private class FakeSyncEngine : SyncEngine {
     override suspend fun drainOutbox(baseUrl: String, accessToken: String, deviceId: String, limit: Int): PushDrainResult {
         pushCalls += 1
         return pushResult
+    }
+}
+
+private class FakePetPhotoSnapshotSyncer : PetPhotoSnapshotSyncer {
+    var calls = 0
+
+    override suspend fun syncAfterPetSnapshot(baseUrl: String, accessToken: String) {
+        calls += 1
     }
 }

@@ -12,6 +12,7 @@ data class PetEntity(
     val name: String,
     val birthDate: LocalDate?,
     val photoUri: String?,
+    val photoRevision: String? = null,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime,
     val remoteId: String? = null,

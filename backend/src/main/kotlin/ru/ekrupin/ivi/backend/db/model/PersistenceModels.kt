@@ -55,6 +55,15 @@ data class PetRecord(
     val version: Long,
 )
 
+data class PetPhotoRecord(
+    val petId: UUID,
+    val revision: String,
+    val contentType: String,
+    val data: ByteArray,
+    val sizeBytes: Int,
+    val updatedAt: Instant,
+)
+
 data class PetMembershipRecord(
     val id: UUID,
     val petId: UUID,

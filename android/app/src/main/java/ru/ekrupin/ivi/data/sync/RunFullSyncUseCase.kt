@@ -13,6 +13,7 @@ class RunFullSyncUseCase @Inject constructor(
     private val syncEngine: SyncEngine,
     private val syncStateStore: SyncStateStore,
     private val syncOutboxStore: SyncOutboxStore,
+    private val petPhotoSnapshotSyncer: PetPhotoSnapshotSyncer,
 ) : FullSyncRunner {
     suspend operator fun invoke(baseUrl: String, accessToken: String): SyncRunResult = run(baseUrl, accessToken)
 
@@ -33,6 +34,7 @@ class RunFullSyncUseCase @Inject constructor(
                 }
 
                 syncEngine.bootstrapImport(baseUrl, accessToken)
+                runCatching { petPhotoSnapshotSyncer.syncAfterPetSnapshot(baseUrl, accessToken) }
                 return SyncRunResult.Success(bootstrapPerformed = true, pushPerformed = false, changesPerformed = false)
             }
 
@@ -55,6 +57,7 @@ class RunFullSyncUseCase @Inject constructor(
             }
 
             syncEngine.pullChanges(baseUrl, accessToken)
+            runCatching { petPhotoSnapshotSyncer.syncAfterPetSnapshot(baseUrl, accessToken) }
             if (hadConflicts) {
                 SyncRunResult.ConflictsDetected
             } else {

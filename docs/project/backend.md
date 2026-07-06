@@ -65,6 +65,7 @@ Flyway применяет миграции при старте.
 - `pet_memberships`
 - `invites`
 - `refresh_tokens`
+- `pet_photos`
 - `event_types`
 - `pet_events`
 - `weight_entries`
@@ -133,9 +134,15 @@ Invite flow:
 - `GET /v1/sync/changes`
 - `POST /v1/sync/push`
 
-Photo endpoints пока заведены как skeleton:
+Photo endpoints хранят актуальное фото питомца в PostgreSQL `bytea`:
+- `GET /v1/pets/{petId}/photo`
 - `PUT /v1/pets/{petId}/photo`
 - `DELETE /v1/pets/{petId}/photo`
+
+Ограничения upload:
+- только `image/jpeg` и `image/png`;
+- максимум 5 МБ;
+- изменение фото обновляет `pets.photo_revision`, `pets.updated_at` и `pets.version`, чтобы обычный sync доставил новую ревизию на другие устройства.
 
 ## API-контракт
 Source of truth — TypeSpec:

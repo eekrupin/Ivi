@@ -181,6 +181,16 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
     }
 }
 
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.addColumnIfMissing(
+            table = "pets",
+            column = "photoRevision",
+            definition = "TEXT",
+        )
+    }
+}
+
 private fun SupportSQLiteDatabase.normalizeSyncableTablesForV6() {
     execSQL("PRAGMA foreign_keys=OFF")
     normalizePetsTableForV6()
