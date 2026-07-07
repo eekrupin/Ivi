@@ -10,7 +10,9 @@ import ru.ekrupin.ivi.core.util.isDownloadedPetPhotoUri
 import ru.ekrupin.ivi.core.util.saveDownloadedPetPhoto
 import ru.ekrupin.ivi.data.local.dao.PetDao
 import ru.ekrupin.ivi.data.local.db.IviDatabase
+import ru.ekrupin.ivi.data.local.entity.PetEntity
 import ru.ekrupin.ivi.data.pet.remote.PetPhotoRemoteDataSource
+import ru.ekrupin.ivi.data.sync.model.SyncState
 
 interface PetPhotoSnapshotSyncer {
     suspend fun syncAfterPetSnapshot(baseUrl: String, accessToken: String)
@@ -42,10 +44,10 @@ class PetPhotoSyncCoordinator @Inject constructor(
 
         val existingDownloadedUri = context.findDownloadedPetPhotoUri(revision)
         if (existingDownloadedUri != null) {
-            if (pet.photoUri != existingDownloadedUri && canReplaceWithDownloadedPhoto(pet.photoUri)) {
+            if (pet.photoUri != existingDownloadedUri && canReplaceWithDownloadedPhoto(pet)) {
                 database.withTransaction {
                     val current = petDao.getPet() ?: return@withTransaction
-                    if (current.photoRevision == revision && canReplaceWithDownloadedPhoto(current.photoUri)) {
+                    if (current.photoRevision == revision && canReplaceWithDownloadedPhoto(current)) {
                         if (current.photoUri != existingDownloadedUri) context.deleteManagedPetPhoto(current.photoUri)
                         petDao.insert(current.copy(photoUri = existingDownloadedUri))
                     }
@@ -63,13 +65,22 @@ class PetPhotoSyncCoordinator @Inject constructor(
         )
         database.withTransaction {
             val current = petDao.getPet() ?: return@withTransaction
-            if (current.photoRevision == revision && canReplaceWithDownloadedPhoto(current.photoUri)) {
+            if (current.photoRevision == revision && canReplaceWithDownloadedPhoto(current)) {
                 if (current.photoUri != downloadedUri) context.deleteManagedPetPhoto(current.photoUri)
                 petDao.insert(current.copy(photoUri = downloadedUri))
             }
         }
     }
 
-    private fun canReplaceWithDownloadedPhoto(photoUri: String?): Boolean =
-        photoUri == null || context.isDownloadedPetPhotoUri(photoUri)
+    private fun canReplaceWithDownloadedPhoto(pet: PetEntity): Boolean = shouldReplaceWithDownloadedPetPhoto(
+        photoUri = pet.photoUri,
+        syncState = pet.syncState,
+        isDownloadedPetPhotoUri = context::isDownloadedPetPhotoUri,
+    )
 }
+
+internal fun shouldReplaceWithDownloadedPetPhoto(
+    photoUri: String?,
+    syncState: SyncState,
+    isDownloadedPetPhotoUri: (String?) -> Boolean,
+): Boolean = photoUri == null || isDownloadedPetPhotoUri(photoUri) || syncState == SyncState.SYNCED

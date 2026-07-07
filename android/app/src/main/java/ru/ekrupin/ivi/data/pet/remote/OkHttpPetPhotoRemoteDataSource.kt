@@ -59,6 +59,9 @@ class OkHttpPetPhotoRemoteDataSource @Inject constructor(
             if (!response.isSuccessful) {
                 throw SyncHttpException(response.code, "Pet photo download failed: HTTP ${response.code}")
             }
+            if (bytes.isEmpty()) {
+                throw SyncHttpException(response.code, "Pet photo download failed: empty body")
+            }
             DownloadedPetPhoto(
                 bytes = bytes,
                 contentType = contentType,

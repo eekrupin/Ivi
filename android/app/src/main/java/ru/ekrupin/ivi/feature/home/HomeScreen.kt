@@ -46,9 +46,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
 import ru.ekrupin.ivi.R
 import ru.ekrupin.ivi.core.ui.IviTestTags
+import ru.ekrupin.ivi.core.ui.LocalPetPhotoImage
 import ru.ekrupin.ivi.core.ui.ScreenScaffold
 
 @Composable
@@ -349,8 +349,8 @@ private fun PetPhoto(
                 }
             }
         } else {
-            AsyncImage(
-                model = photoUri,
+            LocalPetPhotoImage(
+                photoUri = photoUri,
                 contentDescription = stringResource(R.string.pet_photo_content_description, petName),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier

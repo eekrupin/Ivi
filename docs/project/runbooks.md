@@ -119,6 +119,8 @@ node scripts/android-two-device-smoke.mjs emulator-5554 emulator-5556
 
 Скрипт использует `resource-id` из `IviTestTags`, сам настраивает `adb reverse tcp:8080 tcp:8080`, запускает приложение и проверяет базовые selectors на двух устройствах. Он не использует жёстко заданные координаты; tap выполняется по bounds найденного UIAutomator node.
 
+Последний ручной two-device smoke выполнялся на `emulator-5554` + `emulator-5556` через `http://127.0.0.1:8080` и `adb reverse tcp:8080 tcp:8080`. Через UI/test tags проверены базовая синхронизация A, invite accept, owner transfer B, single-owner delete C, conflict flow D, оба resolver-действия `принять серверную версию` и `повторить мои изменения`, logout/reconnect и member leave. Photo sync через системный photo picker проверен пользователем туда и обратно; после наблюдения частично отображенного фото при плохой сети Android photo storage усилен атомарной записью через temporary file + move и проверкой пустого download body. Дополнительно исправлен stale local `photoUri`: если после server snapshot pet уже `SYNCED`, скачанное remote-фото заменяет старый локальный `pet_*.jpg` в БД.
+
 Для чистого smoke перед запуском можно очистить локальные данные приложения:
 
 ```bash
@@ -136,6 +138,8 @@ node scripts/android-two-device-smoke.mjs emulator-5554 emulator-5556
 - карточку конфликтов на главном экране;
 - экран конфликтов;
 - действия resolver: принять серверную версию и повторить мои изменения.
+
+Для smoke через эмуляторы использовать backend URL `http://127.0.0.1:8080` после `adb reverse tcp:8080 tcp:8080`. В одном проходе `http://10.0.2.2:8080` давал timeout на manual sync, поэтому для воспроизводимой проверки предпочтителен reverse.
 
 Ключевые selectors для ручного two-device smoke:
 - Auth/session: `settings_sync_base_url_field`, `settings_sync_email_field`, `settings_sync_display_name_field`, `settings_sync_password_field`, `settings_login_button`, `settings_register_button`, `settings_logout_button`, `settings_connection_status`.
